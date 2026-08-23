@@ -28,7 +28,17 @@
     position:sticky; top:0; z-index:50;
   }
   header h1{font-size:17px; font-weight:700; margin:0;}
-  header .meta{font-size:13px; color:var(--sub); display:flex; align-items:center; gap:6px;}
+  header .meta{font-size:13px; color:var(--sub); display:flex; align-items:center; gap:12px;}
+  #qrThumb{
+    display:flex; align-items:center; gap:8px; cursor:pointer;
+    background:#fff; border:1px solid var(--line); border-radius:8px; padding:5px 9px 5px 5px;
+    transition:border-color .15s;
+  }
+  #qrThumb:hover{border-color:var(--ink);}
+  #qrThumb #qrSmall{width:38px; height:38px; display:flex; align-items:center; justify-content:center;}
+  #qrThumb #qrSmall img, #qrThumb #qrSmall canvas{width:38px !important; height:38px !important; display:block;}
+  #qrThumb .qr-caption{font-size:12.5px; font-weight:600; color:var(--ink); white-space:nowrap;}
+  @media(max-width:520px){ #qrThumb .qr-caption{display:none;} }
   .dot{width:7px; height:7px; border-radius:50%; background:#CBD5E1;}
   .dot.on{background:var(--ok);}
 
@@ -154,21 +164,26 @@
   .modal-card .x{font-size:22px; color:var(--sub); background:none; border:none; cursor:pointer;}
   .modal-card .minfo{font-size:14px; color:var(--sub); margin-bottom:12px;}
   .modal-card img{width:100%; border:1px solid var(--line); border-radius:10px;}
-  #qrLarge img{border-radius:6px;}
 </style>
 </head>
 <body>
 
 <header>
   <h1>두 그래프의 교점 탐구</h1>
-  <div class="meta"><span class="dot" id="dot"></span><span id="statusTxt">연결 중</span></div>
+  <div class="meta">
+    <div id="qrThumb" onclick="openQrModal()" style="display:none;" title="눌러서 QR 크게 보기">
+      <div id="qrSmall"></div>
+      <span class="qr-caption">학생 접속</span>
+    </div>
+    <span class="dot" id="dot"></span><span id="statusTxt">연결 중</span>
+  </div>
 </header>
 
 <div class="wrap">
 
   <div class="tabs">
     <button class="tab active" id="tabFree" onclick="switchTab('free')">자유 탐구</button>
-    <button class="tab" id="tabMission" onclick="switchTab('mission')">가이드 미션</button>
+    <button class="tab" id="tabMission" onclick="switchTab('mission')">미션</button>
     <button class="tab" id="tabSubmit" onclick="switchTab('submit')">답안 제출</button>
   </div>
 
@@ -247,10 +262,6 @@
 
   <!-- 교사 전용 대시보드 -->
   <div class="teacher-only" id="teacherBox" style="margin-top:40px; padding-top:28px; border-top:1px solid var(--line);">
-    <div style="text-align:center; margin-bottom:24px;">
-      <div id="qrLarge" style="display:inline-block;"></div>
-      <p style="font-size:13px; color:var(--sub); margin-top:8px;">학생 접속용 QR</p>
-    </div>
     <div class="dash-head">
       <h2>전체 제출 현황</h2>
       <div class="filters">
@@ -266,6 +277,18 @@
     </div>
     <div class="stat" id="stat">제출된 풀이가 없습니다.</div>
     <div class="grid" id="dashGrid"></div>
+  </div>
+</div>
+
+<!-- 학생 접속 QR 팝업 -->
+<div class="modal" id="qrModal" onclick="closeQrModal()">
+  <div class="modal-card" onclick="event.stopPropagation()" style="max-width:400px; text-align:center;">
+    <div class="mhead" style="justify-content:flex-end;">
+      <button class="x" onclick="closeQrModal()">✕</button>
+    </div>
+    <div id="qrBig" style="display:inline-block;"></div>
+    <p style="font-size:15px; font-weight:600; margin:16px 0 4px;">휴대폰·태블릿으로 QR을 찍어 접속하세요</p>
+    <p id="qrUrl" style="font-size:12.5px; color:var(--sub); word-break:break-all;"></p>
   </div>
 </div>
 
@@ -341,9 +364,13 @@
   function initTeacher(){
     if(isTeacher){
       document.getElementById('teacherBox').style.display='block';
+      document.getElementById('qrThumb').style.display='flex';
+      // 학생용 주소 (교사 파라미터 제거)
       const url=location.origin+location.pathname;
+      document.getElementById('qrUrl').textContent=url;
       if(typeof QRCode !== 'undefined'){
-        new QRCode(document.getElementById('qrLarge'),{text:url,width:180,height:180,colorDark:'#1A1A1A'});
+        new QRCode(document.getElementById('qrSmall'),{text:url,width:38,height:38,colorDark:'#1A1A1A'});
+        new QRCode(document.getElementById('qrBig'),{text:url,width:260,height:260,colorDark:'#1A1A1A'});
       }
       fillMissionFilter();
       if(database){
@@ -801,6 +828,8 @@
     document.getElementById('inspectModal').classList.add('open');
   }
   function closeInspect(){ document.getElementById('inspectModal').classList.remove('open'); }
+  function openQrModal(){ document.getElementById('qrModal').classList.add('open'); }
+  function closeQrModal(){ document.getElementById('qrModal').classList.remove('open'); }
 </script>
 </body>
 </html>
