@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>두 그래프의 교점 탐구</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:ital,wght@1,500;1,700&display=swap');
+
+  :root{
+    --bg:#FAFAF8; --ink:#1A1A1A; --sub:#6B7280; --line:#E5E7EB;
+    --blue:#2563EB; --red:#DC2626; --ok:#059669; --okbg:#ECFDF5; --nobg:#FEF2F2;
+    --panel:#FFFFFF;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Pretendard',system-ui,sans-serif; font-size:16px; line-height:1.5;
+  }
+  /* 수식만 이탤릭 세리프 */
+  .eq{font-family:'Noto Serif KR',serif; font-style:italic; font-weight:700; letter-spacing:.01em;}
+  .eq .op{font-style:normal; font-weight:500; margin:0 .18em; color:var(--sub);}
+
+  header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 22px; border-bottom:1px solid var(--line); background:var(--panel);
+    position:sticky; top:0; z-index:50;
+  }
+  header h1{font-size:17px; font-weight:700; margin:0;}
+  header .meta{font-size:13px; color:var(--sub); display:flex; align-items:center; gap:6px;}
+  .dot{width:7px; height:7px; border-radius:50%; background:#CBD5E1;}
+  .dot.on{background:var(--ok);}
+
+  .wrap{max-width:960px; margin:0 auto; padding:24px 20px 80px;}
+
+  /* 탭 */
+  .tabs{display:flex; gap:4px; margin-bottom:20px; border-bottom:1px solid var(--line);}
+  .tab{
+    padding:10px 18px; font-size:15px; font-weight:600; color:var(--sub);
+    background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; margin-bottom:-1px;
+  }
+  .tab.active{color:var(--ink); border-bottom-color:var(--ink);}
+
+  .toolbar{display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .tools{display:flex; gap:2px; background:#F1F1EE; padding:3px; border-radius:8px;}
+  .tools button{
+    padding:7px 13px; font-size:14px; font-weight:600; color:var(--sub);
+    background:none; border:none; border-radius:6px; cursor:pointer; font-family:inherit;
+  }
+  .tools button.active{background:var(--panel); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.06);}
+  .tools button.era.active{color:var(--red);}
+
+  .colors{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .swatch{width:20px; height:20px; border-radius:50%; cursor:pointer; border:2px solid var(--panel); box-shadow:0 0 0 1px var(--line);}
+  .swatch.active{box-shadow:0 0 0 2px var(--ink);}
+  .clear{font-size:13px; color:var(--sub); background:none; border:none; cursor:pointer; text-decoration:underline; font-family:inherit;}
+
+  /* 미션 선택 */
+  .mission-bar{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;}
+  .mission-bar button{
+    padding:8px 14px; font-size:14px; font-weight:600; color:var(--sub);
+    background:var(--panel); border:1px solid var(--line); border-radius:20px; cursor:pointer; font-family:inherit;
+  }
+  .mission-bar button.active{color:var(--ink); border-color:var(--ink); background:#F8F8F6;}
+  .prompt{
+    background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--ink);
+    border-radius:8px; padding:16px 18px; margin-bottom:16px;
+  }
+  .prompt .label{font-size:12px; font-weight:700; color:var(--sub); letter-spacing:.08em; text-transform:uppercase; margin-bottom:6px;}
+  .prompt .body{font-size:18px;}
+  .prompt .goals{margin-top:10px; font-size:14px; color:var(--sub);}
+  .prompt .goals .eq{font-size:16px;}
+
+  /* 그래프 + 패널 레이아웃 */
+  .stage{display:grid; grid-template-columns:1fr 300px; gap:18px; align-items:start;}
+  @media(max-width:760px){ .stage{grid-template-columns:1fr;} }
+
+  .canvas-box{position:relative; width:100%; aspect-ratio:1/1; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; touch-action:none;}
+  canvas{display:block; width:100%; height:100%; cursor:crosshair;}
+  .coord{position:absolute; left:12px; top:12px; font-size:13px; color:var(--sub); background:rgba(255,255,255,.85); padding:3px 9px; border-radius:6px; border:1px solid var(--line);}
+  .zoombar{position:absolute; right:12px; bottom:12px; display:flex; gap:2px; background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden;}
+  .zoombar button{width:34px; height:32px; border:none; background:none; font-size:16px; color:var(--ink); cursor:pointer;}
+  .zoombar button:hover{background:#F1F1EE;}
+  .zoombar .mid{border-left:1px solid var(--line); border-right:1px solid var(--line);}
+
+  /* 대입 확인 패널 */
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; min-height:200px;}
+  .panel h3{margin:0 0 4px; font-size:13px; font-weight:700; color:var(--sub); letter-spacing:.04em;}
+  .cross-pt{font-size:22px; margin:6px 0 16px;}
+  .cross-pt .eq{font-size:22px;}
+  .check{border-top:1px solid var(--line); padding-top:14px; margin-top:4px;}
+  .check .cap{font-size:13px; color:var(--sub); margin-bottom:10px;}
+  .subst{margin-bottom:14px;}
+  .subst .name{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; vertical-align:middle;}
+  .subst .formula{font-size:15px; margin:3px 0;}
+  .subst .step{color:var(--sub); font-size:14px; padding-left:15px;}
+  .subst .res{font-weight:700; padding-left:15px; font-size:14px;}
+  .subst .res.yes{color:var(--ok);} .subst .res.no{color:var(--red);}
+  .verdict{margin-top:14px; padding:12px 14px; border-radius:8px; font-size:14.5px; font-weight:600;}
+  .verdict.yes{background:var(--okbg); color:var(--ok);}
+  .verdict.no{background:var(--nobg); color:var(--red);}
+  .verdict.wait{background:#F1F1EE; color:var(--sub); font-weight:500;}
+
+  .hint{font-size:13px; color:var(--sub); margin-top:14px; line-height:1.6;}
+  .teacher-only{display:none;}
+
+  /* 제출 폼 */
+  .submit-fields{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; margin-top:16px;}
+  .submit-fields .row{display:flex; gap:10px; margin-bottom:12px;}
+  .submit-fields select, .submit-fields input{
+    flex:1; padding:11px 13px; font-size:15px; border:1px solid var(--line); border-radius:8px;
+    font-family:inherit; outline:none; background:#fff; color:var(--ink); min-width:0;
+  }
+  .submit-fields select:focus, .submit-fields input:focus{border-color:var(--ink);}
+  .ans-row{display:flex; gap:10px; align-items:center;}
+  .ans-row label{font-size:15px; font-weight:600; color:var(--sub);}
+  .ans-row .eq{font-size:16px; margin-right:2px;}
+  .btn-primary{
+    width:100%; padding:13px; font-size:16px; font-weight:700; color:#fff; background:var(--ink);
+    border:none; border-radius:8px; cursor:pointer; font-family:inherit; margin-top:4px;
+  }
+  .btn-primary:disabled{opacity:.5; cursor:default;}
+  .note{font-size:12.5px; color:var(--sub); text-align:center; margin-top:8px;}
+
+  /* 내 제출 목록 & 대시보드 카드 */
+  .records{margin-top:32px;}
+  .records h2{font-size:16px; font-weight:700; margin:0 0 14px;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px;}
+  .rec{background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .rec .top{display:flex; justify-content:space-between; align-items:center; padding:9px 12px; border-bottom:1px solid var(--line); font-size:13.5px; font-weight:600;}
+  .rec img{width:100%; display:block; background:#fff; cursor:pointer;}
+  .rec .bot{padding:9px 12px; font-size:13.5px; text-align:center; color:var(--sub);}
+  .rec .bot b{color:var(--ink);}
+  .tag{font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:10px;}
+  .tag.ok{background:var(--okbg); color:var(--ok);}
+  .tag.no{background:var(--nobg); color:var(--red);}
+  .del{font-size:12px; color:#9CA3AF; background:none; border:none; cursor:pointer; margin-left:6px;}
+
+  /* 대시보드 필터 */
+  .dash-head{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px;}
+  .dash-head h2{font-size:18px; margin:0;}
+  .filters{display:flex; gap:8px;}
+  .filters select{padding:8px 11px; font-size:14px; border:1px solid var(--line); border-radius:8px; font-family:inherit; background:#fff;}
+  .stat{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; text-align:center; font-size:15px; font-weight:600; margin-bottom:18px;}
+  .stat b{font-size:18px;}
+
+  /* 모달 */
+  .modal{display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; justify-content:center; align-items:center; padding:20px;}
+  .modal.open{display:flex;}
+  .modal-card{background:#fff; border-radius:14px; padding:20px; width:100%; max-width:640px;}
+  .modal-card .mhead{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .modal-card h3{margin:0; font-size:17px;}
+  .modal-card .x{font-size:22px; color:var(--sub); background:none; border:none; cursor:pointer;}
+  .modal-card .minfo{font-size:14px; color:var(--sub); margin-bottom:12px;}
+  .modal-card img{width:100%; border:1px solid var(--line); border-radius:10px;}
+  #qrLarge img{border-radius:6px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>두 그래프의 교점 탐구</h1>
+  <div class="meta"><span class="dot" id="dot"></span><span id="statusTxt">연결 중</span></div>
+</header>
+
+<div class="wrap">
+
+  <div class="tabs">
+    <button class="tab active" id="tabFree" onclick="switchTab('free')">자유 탐구</button>
+    <button class="tab" id="tabMission" onclick="switchTab('mission')">가이드 미션</button>
+    <button class="tab" id="tabSubmit" onclick="switchTab('submit')">답안 제출</button>
+  </div>
+
+  <!-- 미션 선택 바 (미션 탭에서만) -->
+  <div class="mission-bar" id="missionBar" style="display:none;"></div>
+
+  <!-- 안내 프롬프트 -->
+  <div class="prompt" id="prompt">
+    <div class="label">자유 탐구</div>
+    <div class="body">좌표평면에 <b>두 직선</b>을 그려 보세요. 두 직선이 만나면, 그 교점을 각 직선의 식에 넣었을 때 등식이 성립하는지 오른쪽에서 확인할 수 있어요.</div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tools">
+      <button id="mMove" class="active" onclick="setMode('move')">이동</button>
+      <button id="mPoint" onclick="setMode('point')">점 찍기</button>
+      <button id="mLine" onclick="setMode('line')">직선 잇기</button>
+      <button id="mEraser" class="era" onclick="setMode('eraser')">지우개</button>
+    </div>
+    <div class="colors">
+      <div class="swatch active" style="background:#DC2626" onclick="setColor('#DC2626',this)"></div>
+      <div class="swatch" style="background:#2563EB" onclick="setColor('#2563EB',this)"></div>
+      <div class="swatch" style="background:#059669" onclick="setColor('#059669',this)"></div>
+      <div class="swatch" style="background:#EA580C" onclick="setColor('#EA580C',this)"></div>
+      <div class="swatch" style="background:#7C3AED" onclick="setColor('#7C3AED',this)"></div>
+      <div class="swatch" style="background:#111827" onclick="setColor('#111827',this)"></div>
+      <button class="clear" onclick="clearAll()">전체 지우기</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="canvas-box" id="cbox">
+      <canvas id="cv"></canvas>
+      <div class="coord" id="coord">(0, 0)</div>
+      <div class="zoombar">
+        <button onclick="zoomBy(1.25)">+</button>
+        <button class="mid" onclick="resetView()">⟳</button>
+        <button onclick="zoomBy(0.8)">−</button>
+      </div>
+    </div>
+
+    <div class="panel" id="panel">
+      <h3>교점 확인</h3>
+      <div class="verdict wait" id="verdict">두 직선을 그리면 교점이 여기에 표시됩니다.</div>
+      <div id="checkArea"></div>
+      <div class="hint" id="hint">💡 점 찍기로 점을 2개 이상 찍고, ‘직선 잇기’로 두 점을 이어 직선을 만들어요.</div>
+    </div>
+  </div>
+
+  <!-- 제출 폼 (제출 탭에서만) -->
+  <div class="submit-fields" id="submitFields" style="display:none;">
+    <div class="row">
+      <select id="stuClass">
+        <option value="">반 선택</option>
+        <option value="교사">교사(시연)</option>
+        <option value="5">5반</option><option value="6">6반</option><option value="7">7반</option><option value="8">8반</option>
+      </select>
+      <input type="text" id="stuName" placeholder="이름">
+    </div>
+    <div class="ans-row" style="margin-bottom:14px;">
+      <label>교점의 좌표</label>
+      <span class="eq">x <span class="op">=</span></span>
+      <input type="text" id="ansX" placeholder="?" style="max-width:90px; text-align:center; padding:11px; border:1px solid var(--line); border-radius:8px; font-family:'Noto Serif KR',serif; font-style:italic; font-weight:700;">
+      <span class="eq">y <span class="op">=</span></span>
+      <input type="text" id="ansY" placeholder="?" style="max-width:90px; text-align:center; padding:11px; border:1px solid var(--line); border-radius:8px; font-family:'Noto Serif KR',serif; font-style:italic; font-weight:700;">
+    </div>
+    <button class="btn-primary" id="submitBtn" onclick="submitAnswer()">그래프와 답안 제출하기</button>
+    <div class="note">해가 없으면 x칸에 “없음”, 무수히 많으면 “무수히”라고 적어도 돼요.</div>
+  </div>
+
+  <!-- 내가 제출한 목록 (학생, 제출 탭에서만) -->
+  <div class="records" id="myRecords" style="display:none;">
+    <h2>내가 제출한 풀이</h2>
+    <div class="grid" id="myGrid"><p style="color:var(--sub); font-size:14px;">아직 제출한 풀이가 없어요.</p></div>
+  </div>
+
+  <!-- 교사 전용 대시보드 -->
+  <div class="teacher-only" id="teacherBox" style="margin-top:40px; padding-top:28px; border-top:1px solid var(--line);">
+    <div style="text-align:center; margin-bottom:24px;">
+      <div id="qrLarge" style="display:inline-block;"></div>
+      <p style="font-size:13px; color:var(--sub); margin-top:8px;">학생 접속용 QR</p>
+    </div>
+    <div class="dash-head">
+      <h2>전체 제출 현황</h2>
+      <div class="filters">
+        <select id="fClass" onchange="renderDash()">
+          <option value="all">모든 반</option>
+          <option value="교사">교사 시연</option>
+          <option value="5">5반</option><option value="6">6반</option><option value="7">7반</option><option value="8">8반</option>
+        </select>
+        <select id="fMission" onchange="renderDash()">
+          <option value="all">모든 문제</option>
+        </select>
+      </div>
+    </div>
+    <div class="stat" id="stat">제출된 풀이가 없습니다.</div>
+    <div class="grid" id="dashGrid"></div>
+  </div>
+</div>
+
+<!-- 풀이 확대 모달 -->
+<div class="modal" id="inspectModal" onclick="closeInspect()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="mhead">
+      <h3>학생 풀이 확인</h3>
+      <button class="x" onclick="closeInspect()">✕</button>
+    </div>
+    <div class="minfo" id="inspectInfo"></div>
+    <img id="inspectImg" src="" alt="학생 풀이">
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  // Firebase는 연결 상태 표시 용도로만 (제출 없음). 없어도 탐구 활동은 정상 작동.
+  const isTeacher = new URLSearchParams(location.search).get('teacher')==='true';
+  let database = null;
+  try {
+    if(typeof firebase !== 'undefined'){
+      const firebaseConfig = { databaseURL:"https://gugal-math-default-rtdb.firebaseio.com/" };
+      if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      database = firebase.database();
+    }
+  } catch(e){ console.warn('Firebase 미연결 — 탐구 활동은 정상 작동합니다.', e); }
+
+  // ===== 미션 데이터 (목표식 제시형, 깔끔한 정수 교점) =====
+  const missions = {
+    m1:{ title:'한 점에서 만나는 두 직선',
+      desc:'다음 두 직선을 그려 보세요. 두 직선은 한 점에서 만납니다.',
+      goals:[{eq:'y = x + 1', a:1, b:1, color:'#DC2626'},{eq:'y = -x + 5', a:-1, b:5, color:'#2563EB'}] },
+    m2:{ title:'평행한 두 직선',
+      desc:'기울기가 같고 절편이 다른 두 직선을 그려 보세요. 두 직선은 만날까요?',
+      goals:[{eq:'y = 2x - 1', a:2, b:-1, color:'#DC2626'},{eq:'y = 2x + 3', a:2, b:3, color:'#2563EB'}] },
+    m3:{ title:'일치하는 두 직선',
+      desc:'같은 직선을 나타내는 두 식입니다. 각각 그려 보면 어떻게 될까요?',
+      goals:[{eq:'y = -x + 2', a:-1, b:2, color:'#DC2626'},{eq:'2x + 2y = 4', a:-1, b:2, color:'#2563EB'}] },
+  };
+
+  // ===== 제출용 문제 (교과서 4.7) =====
+  const DB_PATH='crossing_v2';
+  const subProblems = {
+    p1:{ label:'문제 1', html:'두 직선 <span class="eq">y <span class="op">=</span> x <span class="op">+</span> 3</span> 과 <span class="eq">y <span class="op">=</span> -x <span class="op">+</span> 1</span> 의 교점의 좌표를 구하시오.', answer:{type:'point',x:-1,y:2} },
+    p2:{ label:'문제 2', html:'두 일차방정식 <span class="eq">x <span class="op">+</span> y <span class="op">=</span> 3</span> , <span class="eq">y <span class="op">=</span> 2x</span> 의 그래프의 교점의 좌표를 구하시오.', answer:{type:'point',x:1,y:2} },
+    p3:{ label:'문제 3', html:'연립방정식 <span class="eq">y <span class="op">=</span> 2x <span class="op">+</span> 1</span> , <span class="eq">y <span class="op">=</span> 2x <span class="op">-</span> 3</span> 의 해를 그래프로 구하시오.', answer:{type:'none'} },
+  };
+  let activeSub=null;
+
+  // ===== 상태 =====
+  let tab='free', activeMission=null;
+  let points=[], lines=[], selForLine=[];
+  let mode='move', color='#DC2626';
+  let zoom=35, offX=0, offY=0;
+
+  const cv=document.getElementById('cv'), ctx=cv.getContext('2d'), box=document.getElementById('cbox');
+
+  window.onload=()=>{ resize(); resetView(); initTeacher(); renderMissionBar(); };
+  window.addEventListener('resize', resize);
+
+  function resize(){ cv.width=box.clientWidth; cv.height=box.clientHeight; draw(); }
+  function resetView(){ zoom=35; offX=cv.width/2; offY=cv.height/2; draw(); }
+  function zoomBy(f){
+    const o=zoom; zoom=Math.max(15,Math.min(200,zoom*f));
+    offX=cv.width/2-(cv.width/2-offX)*(zoom/o);
+    offY=cv.height/2-(cv.height/2-offY)*(zoom/o);
+    draw();
+  }
+
+  function initTeacher(){
+    if(isTeacher){
+      document.getElementById('teacherBox').style.display='block';
+      const url=location.origin+location.pathname;
+      if(typeof QRCode !== 'undefined'){
+        new QRCode(document.getElementById('qrLarge'),{text:url,width:180,height:180,colorDark:'#1A1A1A'});
+      }
+      fillMissionFilter();
+      if(database){
+        database.ref(DB_PATH).on('value', snap=>{
+          window.allData=[]; snap.forEach(c=>window.allData.push({id:c.key, ...c.val()}));
+          window.allData.sort((a,b)=>b.time-a.time);
+          renderDash();
+        });
+      }
+    } else {
+      if(database){
+        database.ref(DB_PATH).on('value', snap=>{
+          const keys=myKeys(); const mine=[];
+          snap.forEach(c=>{ if(keys.includes(c.key)) mine.push({id:c.key, ...c.val()}); });
+          mine.sort((a,b)=>b.time-a.time);
+          renderMy(mine);
+        });
+      }
+    }
+  }
+  if(database){
+    database.ref('.info/connected').on('value',s=>{
+      document.getElementById('dot').className = s.val()?'dot on':'dot';
+      document.getElementById('statusTxt').innerText = s.val()?(isTeacher?'교사 모드':'연결됨'):'오프라인';
+    });
+  } else {
+    document.getElementById('statusTxt').innerText = '오프라인 모드';
+  }
+
+  // ===== 탭 =====
+  function switchTab(t){
+    tab=t;
+    ['Free','Mission','Submit'].forEach(x=>document.getElementById('tab'+x).classList.toggle('active', t===x.toLowerCase()));
+    document.getElementById('missionBar').style.display = (t==='mission'||t==='submit')?'flex':'none';
+    // 제출 탭에서만 보이는 요소들
+    const showSubmit = (t==='submit');
+    document.getElementById('submitFields').style.display = showSubmit?'block':'none';
+    document.getElementById('myRecords').style.display = (showSubmit && !isTeacher)?'block':'none';
+    // 패널: 제출 탭에서는 대입 확인 대신 안내
+    clearAll(true);
+    if(t==='free'){
+      activeMission=null; activeSub=null;
+      setPrompt('자유 탐구','좌표평면에 <b>두 직선</b>을 그려 보세요. 두 직선이 만나면, 그 교점을 각 직선의 식에 넣었을 때 등식이 성립하는지 오른쪽에서 확인할 수 있어요.','');
+      renderMissionBar();
+    } else if(t==='mission'){
+      activeSub=null;
+      renderMissionBar();
+      selectMission(Object.keys(missions)[0]);
+    } else if(t==='submit'){
+      activeMission=null;
+      renderSubBar();
+      selectSub(Object.keys(subProblems)[0]);
+    }
+    update();
+  }
+
+  // 제출 문제 선택 바
+  function renderSubBar(){
+    const bar=document.getElementById('missionBar');
+    bar.innerHTML='';
+    Object.entries(subProblems).forEach(([id,pb])=>{
+      const b=document.createElement('button');
+      b.id='sb_'+id; b.textContent=pb.label;
+      b.onclick=()=>selectSub(id);
+      bar.appendChild(b);
+    });
+  }
+  function selectSub(id){
+    activeSub=id;
+    const pb=subProblems[id];
+    document.querySelectorAll('.mission-bar button').forEach(b=>b.classList.remove('active'));
+    const btn=document.getElementById('sb_'+id); if(btn) btn.classList.add('active');
+    setPrompt(pb.label, pb.html, '');
+    clearAll(true);
+    document.getElementById('ansX').value=''; document.getElementById('ansY').value='';
+    update();
+  }
+
+  function renderMissionBar(){
+    const bar=document.getElementById('missionBar');
+    bar.innerHTML='';
+    Object.entries(missions).forEach(([id,m])=>{
+      const b=document.createElement('button');
+      b.id='mb_'+id; b.textContent=m.title;
+      b.onclick=()=>selectMission(id);
+      bar.appendChild(b);
+    });
+  }
+
+  function selectMission(id){
+    activeMission=id;
+    const m=missions[id];
+    document.querySelectorAll('.mission-bar button').forEach(b=>b.classList.remove('active'));
+    document.getElementById('mb_'+id).classList.add('active');
+    const goalsHtml = m.goals.map(g=>`<span class="eq" style="color:${g.color}">${fmtEq(g.eq)}</span>`).join('&nbsp;&nbsp;/&nbsp;&nbsp;');
+    setPrompt(m.title, m.desc, `<div class="goals">그릴 직선: ${goalsHtml}</div>`);
+    clearAll(true);
+    update();
+  }
+
+  function setPrompt(label, body, extra){
+    document.getElementById('prompt').innerHTML =
+      `<div class="label">${label}</div><div class="body">${body}</div>${extra||''}`;
+  }
+
+  // y = ax + b 문자열을 이탤릭 수식으로
+  function fmtEq(s){
+    return s.replace(/([+\-=])/g,'<span class="op">$1</span>');
+  }
+
+  // ===== 좌표 변환 =====
+  function toMath(sx,sy){ return { x:Math.round((sx-offX)/zoom*2)/2, y:Math.round(-(sy-offY)/zoom*2)/2 }; }
+
+  // ===== 그리기 =====
+  function draw(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    const sX=Math.floor(-offX/zoom)-1, eX=Math.ceil((cv.width-offX)/zoom)+1;
+    const sY=Math.floor(-offY/zoom)-1, eY=Math.ceil((cv.height-offY)/zoom)+1;
+    // 격자
+    ctx.strokeStyle='#EDEDEA'; ctx.lineWidth=1;
+    for(let x=sX;x<=eX;x++){ const px=x*zoom+offX; ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,cv.height); ctx.stroke(); }
+    for(let y=sY;y<=eY;y++){ const py=-y*zoom+offY; ctx.beginPath(); ctx.moveTo(0,py); ctx.lineTo(cv.width,py); ctx.stroke(); }
+    // 축
+    ctx.strokeStyle='#9CA3AF'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(0,offY); ctx.lineTo(cv.width,offY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(offX,0); ctx.lineTo(offX,cv.height); ctx.stroke();
+    // 눈금 숫자
+    ctx.font='12px Pretendard'; ctx.textBaseline='middle';
+    ctx.fillStyle='#6B7280';
+    ctx.textAlign='center';
+    for(let x=sX;x<=eX;x++){ if(x===0)continue; const px=x*zoom+offX; let py=offY+16; py=Math.max(14,Math.min(cv.height-14,py)); if(px<8||px>cv.width-8)continue; ctx.fillText(x,px,py); }
+    ctx.textAlign='right';
+    for(let y=sY;y<=eY;y++){ if(y===0)continue; const py=-y*zoom+offY; let px=offX-8; px=Math.max(20,Math.min(cv.width-6,px)); if(py<10||py>cv.height-10)continue; ctx.fillText(y,px,py); }
+    ctx.fillText('O', offX-7, offY+14);
+    // 직선
+    lines.forEach(l=>drawLine(l.p1,l.p2,l.color,2.5));
+    // 점
+    points.forEach((p,i)=>{
+      const px=p.x*zoom+offX, py=-p.y*zoom+offY;
+      ctx.beginPath(); ctx.arc(px,py,selForLine.includes(i)?7:5,0,7);
+      ctx.fillStyle=selForLine.includes(i)?'#F59E0B':(p.color||'#111827'); ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    });
+    // 교점 강조
+    const ix=computeIntersection();
+    if(ix && ix.type==='point'){
+      const px=ix.x*zoom+offX, py=-ix.y*zoom+offY;
+      ctx.beginPath(); ctx.arc(px,py,8,0,7);
+      ctx.fillStyle='#111827'; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(px,py,13,0,7);
+      ctx.strokeStyle='rgba(17,24,39,.25)'; ctx.lineWidth=2; ctx.stroke();
+    }
+  }
+
+  function drawLine(p1,p2,c,w){
+    const dx=p2.x-p1.x;
+    ctx.strokeStyle=c; ctx.lineWidth=w; ctx.beginPath();
+    if(dx===0){ const px=p1.x*zoom+offX; ctx.moveTo(px,0); ctx.lineTo(px,cv.height); }
+    else{
+      const m=(p2.y-p1.y)/dx, b=p1.y-m*p1.x;
+      const x1=-offX/zoom, x2=(cv.width-offX)/zoom;
+      ctx.moveTo(x1*zoom+offX, -(m*x1+b)*zoom+offY);
+      ctx.lineTo(x2*zoom+offX, -(m*x2+b)*zoom+offY);
+    }
+    ctx.stroke();
+  }
+
+  // ===== 직선의 방정식 (두 점에서) =====
+  function lineEq(l){
+    const dx=l.p1.x-l.p2.x;
+    if(dx===0) return {vertical:true, x:l.p1.x, color:l.color};
+    const a=(l.p1.y-l.p2.y)/dx;
+    const b=l.p1.y-a*l.p1.x;
+    return {vertical:false, a, b, color:l.color};
+  }
+
+  // ===== 교점 계산 =====
+  function computeIntersection(){
+    if(lines.length<2) return null;
+    const e1=lineEq(lines[0]), e2=lineEq(lines[1]);
+    if(e1.vertical && e2.vertical){
+      return e1.x===e2.x ? {type:'infinite'} : {type:'none'};
+    }
+    if(e1.vertical){ const y=e2.a*e1.x+e2.b; return {type:'point', x:e1.x, y}; }
+    if(e2.vertical){ const y=e1.a*e2.x+e1.b; return {type:'point', x:e2.x, y}; }
+    if(Math.abs(e1.a-e2.a)<1e-9){
+      return Math.abs(e1.b-e2.b)<1e-9 ? {type:'infinite'} : {type:'none'};
+    }
+    const x=(e2.b-e1.b)/(e1.a-e2.a);
+    const y=e1.a*x+e1.b;
+    return {type:'point', x:round2(x), y:round2(y)};
+  }
+  function round2(n){ return Math.round(n*100)/100; }
+  function fmtNum(n){ // 정수는 정수로, 아니면 소수 2자리
+    return Number.isInteger(n)? n : parseFloat(n.toFixed(2));
+  }
+
+  // ===== 대입 확인 패널 =====
+  function update(){ draw(); renderPanel(); }
+
+  function renderPanel(){
+    const verdict=document.getElementById('verdict');
+    const area=document.getElementById('checkArea');
+    const hint=document.getElementById('hint');
+    area.innerHTML='';
+
+    // 제출 탭: 자동 대입 확인을 숨기고 스스로 풀도록 안내
+    if(tab==='submit'){
+      verdict.className='verdict wait';
+      if(lines.length<2){
+        verdict.innerHTML='문제의 두 직선을 그려 보세요. 그린 뒤 아래에 교점 좌표를 적어 제출합니다.';
+      } else {
+        verdict.innerHTML='두 직선을 그렸어요. 교점을 찾아 아래 칸에 적고 제출해 보세요.<br><span style="font-size:13px; color:var(--sub)">정답 여부는 제출 후 확인할 수 있어요.</span>';
+      }
+      hint.style.display='none';
+      return;
+    }
+
+    if(lines.length<2){
+      verdict.className='verdict wait';
+      verdict.textContent = lines.length===0
+        ? '두 직선을 그리면 교점이 여기에 표시됩니다.'
+        : '직선이 하나 더 필요해요. 두 번째 직선을 그려 보세요.';
+      hint.style.display='block';
+      return;
+    }
+    hint.style.display='none';
+    const ix=computeIntersection();
+
+    if(ix.type==='none'){
+      verdict.className='verdict no';
+      verdict.innerHTML='두 직선이 <b>평행</b>해서 교점이 없어요. → 연립방정식의 <b>해가 없습니다</b>.';
+      return;
+    }
+    if(ix.type==='infinite'){
+      verdict.className='verdict yes';
+      verdict.innerHTML='두 직선이 <b>일치</b>해요. 모든 점이 공통 → 해가 <b>무수히 많습니다</b>.';
+      return;
+    }
+
+    // 한 점에서 만남 → 대입 확인
+    const x=ix.x, y=ix.y;
+    verdict.className='verdict wait';
+    verdict.innerHTML = `교점 &nbsp;<span class="eq" style="font-size:19px">(${fmtNum(x)}<span class="op">,</span> ${fmtNum(y)})</span>`;
+
+    const e1=lineEq(lines[0]), e2=lineEq(lines[1]);
+    let allOk=true;
+    [e1,e2].forEach((e,idx)=>{
+      const wrap=document.createElement('div'); wrap.className='subst';
+      let formula, stepL, stepR, ok;
+      if(e.vertical){
+        formula = `x <span class="op">=</span> ${fmtNum(e.x)}`;
+        stepL = fmtNum(x); stepR = fmtNum(e.x);
+        ok = Math.abs(x-e.x)<1e-9;
+      } else {
+        formula = `y <span class="op">=</span> ${fmtA(e.a)}x ${e.b>=0?'<span class="op">+</span> '+fmtNum(e.b):'<span class="op">−</span> '+fmtNum(Math.abs(e.b))}`;
+        const rhs = e.a*x+e.b;
+        stepL = fmtNum(y);
+        // 대입 표기: 기울기 1·-1도 자연스럽게 (1×(2)→(2), -1×(2)→-(2))
+        let axTerm;
+        if(e.a===1) axTerm = `(${fmtNum(x)})`;
+        else if(e.a===-1) axTerm = `−(${fmtNum(x)})`;
+        else axTerm = `${fmtNum(e.a)}×(${fmtNum(x)})`;
+        stepR = `${axTerm} ${e.b>=0?'+ '+fmtNum(e.b):'− '+fmtNum(Math.abs(e.b))} = ${fmtNum(round2(rhs))}`;
+        ok = Math.abs(y-rhs)<1e-6;
+      }
+      if(!ok) allOk=false;
+      wrap.innerHTML =
+        `<div class="formula"><span class="name" style="background:${e.color}"></span><span class="eq">${formula}</span></div>`+
+        `<div class="step">교점을 대입: <span class="eq">${e.vertical?('x = '+stepL):('y = '+stepR)}</span></div>`+
+        `<div class="res ${ok?'yes':'no'}">${ok?'✓ 등식이 성립합니다':'✗ 성립하지 않아요'}</div>`;
+      area.appendChild(wrap);
+    });
+
+    const v=document.createElement('div');
+    v.className='verdict '+(allOk?'yes':'no');
+    v.innerHTML = allOk
+      ? `교점 <span class="eq">(${fmtNum(x)}, ${fmtNum(y)})</span>은 두 식을 <b>모두 만족</b>해요. 이것이 곧 <b>연립방정식의 해</b>입니다.`
+      : `이 점은 두 식을 모두 만족하지 않아요. 직선을 다시 확인해 볼까요?`;
+    area.appendChild(v);
+  }
+  function fmtA(a){ // 기울기: 1→생략 안 함(가독), -1 처리
+    if(a===1) return '';
+    if(a===-1) return '−';
+    return fmtNum(a);
+  }
+
+  // ===== 입력 (마우스 + 터치) =====
+  let dragging=false, lx, ly;
+  function pos(e){ const r=cv.getBoundingClientRect(); const cx=e.touches?e.touches[0].clientX:e.clientX; const cy=e.touches?e.touches[0].clientY:e.clientY; return {x:cx-r.left, y:cy-r.top}; }
+
+  function start(e){
+    dragging=true; const p=pos(e); lx=p.x; ly=p.y;
+    const m=toMath(p.x,p.y);
+    if(mode==='point'){
+      const i=points.findIndex(q=>q.x===m.x&&q.y===m.y);
+      if(i===-1) points.push({...m,color}); else points.splice(i,1);
+      update();
+    } else if(mode==='line'){
+      const pi=points.findIndex(q=>Math.hypot(q.x-m.x,q.y-m.y)<0.6);
+      if(pi!==-1){
+        if(selForLine.includes(pi)) selForLine=selForLine.filter(k=>k!==pi);
+        else{ selForLine.push(pi);
+          if(selForLine.length===2){
+            lines.push({p1:points[selForLine[0]], p2:points[selForLine[1]], color});
+            selForLine=[];
+          }
+        }
+        update();
+      }
+    } else if(mode==='eraser'){
+      const pi=points.findIndex(q=>Math.hypot(q.x-m.x,q.y-m.y)<0.6);
+      if(pi!==-1){ const dp=points[pi]; points.splice(pi,1); lines=lines.filter(l=>l.p1!==dp&&l.p2!==dp); update(); }
+      else{ // 직선 지우기: 클릭점이 직선 위에 있으면
+        for(let k=lines.length-1;k>=0;k--){ if(onLine(lines[k],m)){ lines.splice(k,1); break; } }
+        update();
+      }
+    }
+  }
+  function onLine(l,m){
+    const e=lineEq(l);
+    if(e.vertical) return Math.abs(m.x-e.x)<0.4;
+    return Math.abs(m.y-(e.a*m.x+e.b))<0.4;
+  }
+  function move(e){
+    const p=pos(e); const m=toMath(p.x,p.y);
+    document.getElementById('coord').textContent=`(${m.x}, ${m.y})`;
+    if(dragging && mode==='move'){ offX+=p.x-lx; offY+=p.y-ly; lx=p.x; ly=p.y; draw(); }
+  }
+  cv.addEventListener('mousedown',start);
+  cv.addEventListener('mousemove',move);
+  window.addEventListener('mouseup',()=>dragging=false);
+  cv.addEventListener('touchstart',e=>{e.preventDefault();start(e);},{passive:false});
+  cv.addEventListener('touchmove',e=>{e.preventDefault();move(e);},{passive:false});
+  window.addEventListener('touchend',()=>dragging=false);
+
+  // ===== 도구/색 =====
+  function setMode(m){
+    mode=m;
+    ['Move','Point','Line','Eraser'].forEach(x=>document.getElementById('m'+x).classList.remove('active'));
+    document.getElementById('m'+m.charAt(0).toUpperCase()+m.slice(1)).classList.add('active');
+    selForLine=[]; draw();
+  }
+  function setColor(c,el){
+    color=c;
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+    el.classList.add('active');
+  }
+  function clearAll(silent){
+    if(!silent && !confirm('그린 것을 모두 지울까요?')) return;
+    points=[]; lines=[]; selForLine=[]; update();
+  }
+
+  // ===== 채점 =====
+  function normalize(s){ return (s||'').toString().trim().replace(/\s/g,''); }
+  function grade(subId, xv, yv){
+    const ans=subProblems[subId].answer;
+    const x=normalize(xv), y=normalize(yv);
+    if(ans.type==='none') return /없|해가없/i.test(x)||/없/i.test(y);
+    if(ans.type==='infinite') return /무수|무한|많/i.test(x)||/무수|무한|많/i.test(y);
+    return parseFloat(x)===ans.x && parseFloat(y)===ans.y;
+  }
+
+  // ===== 제출 =====
+  function myKeys(){ const k=localStorage.getItem('cross_v2_subs'); return k?JSON.parse(k):[]; }
+  function saveKey(k){ const a=myKeys(); if(!a.includes(k)){ a.push(k); localStorage.setItem('cross_v2_subs', JSON.stringify(a)); } }
+
+  // Firebase 키에 쓸 수 없는 문자 정리
+  function safeKey(s){ return (s||'').toString().replace(/[.#$\[\]\/\s]/g,'_'); }
+
+  function submitAnswer(){
+    if(!database){ alert('인터넷 연결이 필요해요. 연결 상태를 확인해 주세요.'); return; }
+    const cls=document.getElementById('stuClass').value;
+    const name=document.getElementById('stuName').value.trim();
+    if(!cls||!name){ alert('반과 이름을 입력해 주세요.'); return; }
+    if(!activeSub){ alert('문제를 선택해 주세요.'); return; }
+    if(lines.length<1){ alert('직선을 그려야 제출할 수 있어요.'); return; }
+    const xv=document.getElementById('ansX').value||'?';
+    const yv=document.getElementById('ansY').value||'?';
+    const correct=grade(activeSub, xv, yv);
+
+    const btn=document.getElementById('submitBtn');
+    btn.disabled=true; btn.textContent='전송 중...';
+
+    // 캔버스를 기준뷰로 캡처
+    const oz=zoom, ox=offX, oy=offY; resetView();
+    const img=cv.toDataURL('image/png');
+    zoom=oz; offX=ox; offY=oy; draw();
+
+    // 고정 키: 같은 학생이 같은 문제를 다시 내면 이전 제출을 덮어씀
+    const recKey = `${safeKey(cls)}_${safeKey(name)}_${activeSub}`;
+    const ref=database.ref(DB_PATH+'/'+recKey);
+    ref.set({
+      class:cls, name:name, subId:activeSub, label:subProblems[activeSub].label,
+      x:xv, y:yv, correct:correct, img:img, points:points, lines:lines, time:Date.now()
+    }).then(()=>{
+      saveKey(recKey);
+      alert(correct?'정답입니다. 제출 완료!':'제출되었습니다. (답을 한 번 더 확인해 볼까요?)');
+      btn.disabled=false; btn.textContent='그래프와 답안 제출하기';
+    }).catch(()=>{ alert('전송에 실패했어요. 다시 시도해 주세요.'); btn.disabled=false; btn.textContent='그래프와 답안 제출하기'; });
+  }
+
+  // ===== 내 제출 목록 (학생) =====
+  function renderMy(data){
+    const g=document.getElementById('myGrid');
+    if(!data.length){ g.innerHTML='<p style="color:var(--sub); font-size:14px;">아직 제출한 풀이가 없어요.</p>'; return; }
+    g.innerHTML='';
+    data.forEach(d=>{
+      const el=document.createElement('div'); el.className='rec';
+      el.innerHTML=`
+        <div class="top"><span>${d.label}</span>${d.correct?'<span class="tag ok">정답</span>':'<span class="tag no">확인 필요</span>'}</div>
+        <img src="${d.img}" onclick='openInspect(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+        <div class="bot">답: <b>x = ${d.x}, y = ${d.y}</b></div>`;
+      g.appendChild(el);
+    });
+  }
+
+  // ===== 교사 대시보드 =====
+  function renderDash(){
+    const cf=document.getElementById('fClass').value;
+    const mf=document.getElementById('fMission').value;
+    const g=document.getElementById('dashGrid');
+    const data=(window.allData||[]).filter(d=>(cf==='all'||d.class===cf)&&(mf==='all'||d.subId===mf));
+    const total=data.length, ok=data.filter(d=>d.correct).length;
+    document.getElementById('stat').innerHTML = total===0 ? '제출된 풀이가 없습니다.'
+      : `제출 <b>${total}</b>명 · 정답 <b>${ok}</b>명 · 정답률 <b>${Math.round(ok/total*100)}%</b>`;
+    g.innerHTML='';
+    data.forEach(d=>{
+      const el=document.createElement('div'); el.className='rec';
+      el.innerHTML=`
+        <div class="top">
+          <span>${d.class==='교사'?'시연':d.class+'반'} ${d.name}</span>
+          <span>${d.correct?'<span class="tag ok">정답</span>':'<span class="tag no">오답</span>'}<button class="del" onclick="delRec('${d.id}')">삭제</button></span>
+        </div>
+        <img src="${d.img}" onclick='openInspect(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+        <div class="bot">${d.label} · 답: <b>x = ${d.x}, y = ${d.y}</b></div>`;
+      g.appendChild(el);
+    });
+  }
+  function delRec(id){ if(database && confirm('삭제할까요?')) database.ref(DB_PATH+'/'+id).remove(); }
+
+  function fillMissionFilter(){
+    const sel=document.getElementById('fMission');
+    Object.entries(subProblems).forEach(([id,pb])=>{
+      const o=document.createElement('option'); o.value=id; o.textContent=pb.label; sel.appendChild(o);
+    });
+  }
+
+  // ===== 풀이 확대 모달 =====
+  function openInspect(d){
+    document.getElementById('inspectImg').src=d.img;
+    document.getElementById('inspectInfo').innerHTML=
+      `${d.class==='교사'?'교사 시연':d.class+'반'} ${d.name} · ${d.label} · 답: x=${d.x}, y=${d.y} ${d.correct?'(정답)':'(오답)'}`;
+    document.getElementById('inspectModal').classList.add('open');
+  }
+  function closeInspect(){ document.getElementById('inspectModal').classList.remove('open'); }
+</script>
+</body>
+</html>
