@@ -595,13 +595,13 @@
     const s=solveSystem(a1,b1,c1,a2,b2,c2);
     if(s.type==='point'){
       res.className='eq-result ok';
-      res.innerHTML=`두 직선이 한 점에서 만나요. <span class="rtag">교점: ${renderTex(`(${texNum(s.x)},\\ ${texNum(s.y)})`,`(${fmtNum(s.x)}, ${fmtNum(s.y)})`,true)}</span> — 이 좌표가 곧 연립방정식의 해예요.`;
+      res.innerHTML=`교점: <span class="rtag">${renderTex(`(${texNum(s.x)},\\ ${texNum(s.y)})`,`(${fmtNum(s.x)}, ${fmtNum(s.y)})`,true)}</span>`;
     } else if(s.type==='none'){
       res.className='eq-result none';
-      res.innerHTML='두 직선이 <span class="rtag">평행</span>해요. 교점이 없으니 <span class="rtag">해가 없습니다</span>.';
+      res.innerHTML='교점: <span class="rtag">없음 (두 직선이 평행)</span>';
     } else {
       res.className='eq-result inf';
-      res.innerHTML='두 직선이 <span class="rtag">일치</span>해요. 교점이 무수히 많으니 <span class="rtag">해가 무수히 많습니다</span>.';
+      res.innerHTML='교점: <span class="rtag">무수히 많음 (두 직선이 일치)</span>';
     }
     // 그래프가 교점을 담도록 뷰 맞춤
     resetView();
@@ -631,7 +631,7 @@
     if(t==='free'){
       activeMission=null; activeSub=null;
       clearEquationLines();
-      setPrompt('자유 탐구','아래에 <b>연립방정식</b>을 세우고 “그래프로 그리기”를 눌러 보세요. 두 식이 두 직선으로 그려지고, 교점의 좌표가 곧 연립방정식의 해예요. 직접 손으로 직선을 그려 확인해 볼 수도 있어요.','');
+      setPrompt('자유 탐구','연립방정식을 세우고 “그래프로 그리기”를 눌러 보세요.','');
       renderMissionBar();
     } else if(t==='mission'){
       activeSub=null;
