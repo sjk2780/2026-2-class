@@ -1181,11 +1181,12 @@
     if(!data.length){ g.innerHTML='<p style="color:var(--sub); font-size:14px;">아직 제출한 풀이가 없어요.</p>'; return; }
     g.innerHTML='';
     data.forEach(d=>{
+      recCache[d.id]=d; // 캐시에 저장
       const el=document.createElement('div'); el.className='rec';
       const t=new Date(d.time); const ts=`${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`;
       el.innerHTML=`
         <div class="top"><span>${d.label}</span><span class="tag ok">제출됨</span></div>
-        <img src="${d.img}" onclick='openInspect(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+        <img src="${d.img}" onclick="openInspectById('${d.id}')">
         <div class="bot">답: <b>x = ${d.x}, y = ${d.y}</b> · ${ts}</div>`;
       g.appendChild(el);
     });
@@ -1216,6 +1217,7 @@
       const grid=document.createElement('div');
       grid.className='grid';
       items.forEach(d=>{
+        recCache[d.id]=d; // 캐시에 저장
         const el=document.createElement('div'); el.className='rec';
         const t=new Date(d.time); const ts=`${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`;
         el.innerHTML=`
@@ -1223,7 +1225,7 @@
             <span>${d.class==='교사'?'시연':d.class+'반'} ${d.name}</span>
             <button class="del" onclick="delRec('${d.id}')">삭제</button>
           </div>
-          <img src="${d.img}" onclick='openInspect(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+          <img src="${d.img}" onclick="openInspectById('${d.id}')">
           <div class="bot">답: <b>x = ${d.x}, y = ${d.y}</b> · ${ts}</div>`;
         grid.appendChild(el);
       });
@@ -1251,7 +1253,11 @@
   }
 
   // ===== 풀이 확대 모달 =====
-  function openInspect(d){
+  // 제출 데이터 캐시 (id → data). onclick에 이미지를 박지 않기 위함
+  const recCache={};
+  function openInspectById(id){
+    const d=recCache[id];
+    if(!d) return;
     document.getElementById('inspectImg').src=d.img;
     document.getElementById('inspectInfo').innerHTML=
       `${d.class==='교사'?'교사 시연':d.class+'반'} ${d.name} · ${d.label} · 답: x=${d.x}, y=${d.y}`;
