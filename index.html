@@ -128,6 +128,13 @@
   @media(max-width:760px){ .stage{grid-template-columns:1fr;} }
 
   .canvas-box{position:relative; width:100%; aspect-ratio:1/1; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; touch-action:none;}
+  .sketch-tools{position:absolute; left:50%; bottom:14px; transform:translateX(-50%); display:none; align-items:center; gap:12px; background:rgba(255,255,255,.95); border:1px solid var(--line); border-radius:24px; padding:7px 14px; box-shadow:0 4px 12px rgba(0,0,0,.1);}
+  .sketch-tools.show{display:flex;}
+  .sk-colors{display:flex; gap:8px;}
+  .sk-dot{width:22px; height:22px; border-radius:50%; cursor:pointer; border:2px solid #fff; box-shadow:0 0 0 1px var(--line);}
+  .sk-dot.active{box-shadow:0 0 0 2px var(--ink);}
+  .sk-btn{font-family:inherit; font-size:14px; font-weight:600; color:var(--sub); background:none; border:none; cursor:pointer; padding:4px 8px; border-radius:6px;}
+  .sk-btn.active{color:var(--red); background:#FEF2F2;}
   canvas{display:block; width:100%; height:100%; cursor:crosshair;}
   .coord{position:absolute; left:12px; top:12px; font-size:13px; color:var(--sub); background:rgba(255,255,255,.85); padding:3px 9px; border-radius:6px; border:1px solid var(--line);}
   .zoombar{position:absolute; right:12px; bottom:12px; display:flex; gap:2px; background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden;}
@@ -294,6 +301,15 @@
         <button class="mid" onclick="resetView()">⟳</button>
         <button onclick="zoomBy(0.8)">−</button>
       </div>
+      <div class="sketch-tools" id="sketchTools">
+        <div class="sk-colors">
+          <div class="sk-dot active" style="background:#1A1A1A" onclick="setPenColor('#1A1A1A',this)"></div>
+          <div class="sk-dot" style="background:#DC2626" onclick="setPenColor('#DC2626',this)"></div>
+          <div class="sk-dot" style="background:#2563EB" onclick="setPenColor('#2563EB',this)"></div>
+        </div>
+        <button class="sk-btn" id="skEraser" onclick="toggleEraser()">지우개</button>
+        <button class="sk-btn" onclick="clearSketch()">전체 지우기</button>
+      </div>
     </div>
 
     <div class="panel" id="panel">
@@ -408,8 +424,8 @@
   const subProblems = {
     p1_1:{ label:'문제 1-(1)', intro:'연립방정식의 해를 그래프로 구하시오.', tex:'\\begin{cases} x - 2y = -4 \\\\ 2x + 3y = -1 \\end{cases}', answer:{type:'point',x:-2,y:1} },
     p1_2:{ label:'문제 1-(2)', intro:'연립방정식의 해를 그래프로 구하시오.', tex:'\\begin{cases} 2x + 3y = -1 \\\\ 4x - y = 5 \\end{cases}', answer:{type:'point',x:1,y:-1} },
-    p2_1:{ label:'문제 2-(1)', intro:'두 일차방정식의 그래프의 교점의 좌표를 구하시오.', tex:'\\begin{cases} 2x - y = 0 \\\\ y = x + 2 \\end{cases}', answer:{type:'point',x:2,y:4} },
-    p2_2:{ label:'문제 2-(2)', intro:'두 일차방정식의 그래프의 교점의 좌표를 구하시오.', tex:'\\begin{cases} 3x + 2y = -3 \\\\ 4x - 2y = 10 \\end{cases}', answer:{type:'point',x:1,y:-3} },
+    p2_1:{ label:'문제 2-(1)', intro:'두 일차방정식의 그래프의 교점의 좌표를 구하시오. (아래 노트에 풀이 과정을 적어 보세요)', tex:'\\begin{cases} 2x - y = 0 \\\\ y = x + 2 \\end{cases}', answer:{type:'point',x:2,y:4}, sketch:true },
+    p2_2:{ label:'문제 2-(2)', intro:'두 일차방정식의 그래프의 교점의 좌표를 구하시오. (아래 노트에 풀이 과정을 적어 보세요)', tex:'\\begin{cases} 3x + 2y = -3 \\\\ 4x - 2y = 10 \\end{cases}', answer:{type:'point',x:1,y:-3}, sketch:true },
     p3_1:{ label:'문제 3-(1)', intro:'연립방정식의 해를 그래프로 구하시오.', tex:'\\begin{cases} 2x + y = -1 \\\\ 6x + 3y = -3 \\end{cases}', answer:{type:'infinite'} },
     p3_2:{ label:'문제 3-(2)', intro:'연립방정식의 해를 그래프로 구하시오.', tex:'\\begin{cases} 2x - 2y = 4 \\\\ 3x - 3y = 9 \\end{cases}', answer:{type:'none'} },
   };
@@ -420,6 +436,9 @@
   let points=[], lines=[], selForLine=[];
   let mode='move', color='#DC2626';
   let zoom=35, offX=0, offY=0;
+  let sketchMode=false;        // 스케치북(빈 노트) 모드 여부
+  let strokes=[];              // 자유 필기 획들: [{color, pts:[{x,y}...]}]
+  let curStroke=null;          // 현재 그리는 중인 획
 
   const cv=document.getElementById('cv'), ctx=cv.getContext('2d'), box=document.getElementById('cbox');
 
@@ -633,11 +652,13 @@
     clearAll(true);
     if(t==='free'){
       activeMission=null; activeSub=null;
+      sketchMode=false; applySketchUI();
       clearEquationLines();
       setPrompt('자유 탐구','연립방정식을 세우고 “그래프로 그리기”를 눌러 보세요.','');
       renderMissionBar();
     } else if(t==='mission'){
       activeSub=null;
+      sketchMode=false; applySketchUI();
       renderMissionBar();
       selectMission(Object.keys(missions)[0]);
     } else if(t==='submit'){
@@ -676,9 +697,57 @@
     const btn=document.getElementById('sb_'+id); if(btn) btn.classList.add('active');
     const systemHtml = `<div class="sys-eq">${renderTex(pb.tex, pb.intro)}</div>`;
     setPrompt(pb.label, pb.intro, systemHtml);
+    // 스케치 모드 전환
+    sketchMode = !!pb.sketch;
+    strokes=[]; curStroke=null;
+    applySketchUI();
     clearAll(true);
     document.getElementById('ansX').value=''; document.getElementById('ansY').value='';
     update();
+  }
+
+  // 스케치 모드에 따라 UI(도구·패널·힌트) 조정
+  function applySketchUI(){
+    const toolbar=document.querySelector('.toolbar');
+    const panel=document.getElementById('panel');
+    const zoombar=document.querySelector('.zoombar');
+    const coord=document.getElementById('coord');
+    const skTools=document.getElementById('sketchTools');
+    if(sketchMode){
+      if(toolbar) toolbar.style.display='none';
+      if(panel) panel.style.display='none';
+      if(zoombar) zoombar.style.display='none';
+      if(coord) coord.style.display='none';
+      if(skTools) skTools.classList.add('show');
+      mode='pen'; penColor='#1A1A1A'; eraserOn=false;
+      // 색 선택 초기화
+      document.querySelectorAll('.sk-dot').forEach((d,i)=>d.classList.toggle('active', i===0));
+      const se=document.getElementById('skEraser'); if(se) se.classList.remove('active');
+    } else {
+      if(toolbar) toolbar.style.display='';
+      if(panel) panel.style.display='';
+      if(zoombar) zoombar.style.display='';
+      if(coord) coord.style.display='';
+      if(skTools) skTools.classList.remove('show');
+      if(mode==='pen') mode='move';
+    }
+  }
+
+  // ===== 스케치북(자유 필기) =====
+  let penColor='#1A1A1A', eraserOn=false;
+  function setPenColor(c, el){
+    penColor=c; eraserOn=false;
+    document.querySelectorAll('.sk-dot').forEach(d=>d.classList.remove('active'));
+    if(el) el.classList.add('active');
+    const se=document.getElementById('skEraser'); if(se) se.classList.remove('active');
+  }
+  function toggleEraser(){
+    eraserOn=!eraserOn;
+    document.getElementById('skEraser').classList.toggle('active', eraserOn);
+  }
+  function clearSketch(){
+    if(strokes.length && !confirm('필기한 내용을 모두 지울까요?')) return;
+    strokes=[]; curStroke=null; draw();
   }
 
   function renderMissionBar(){
@@ -718,6 +787,25 @@
   // ===== 그리기 =====
   function draw(){
     ctx.clearRect(0,0,cv.width,cv.height);
+    if(sketchMode){
+      // 빈 흰 노트 + 자유 필기 획
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height);
+      ctx.lineCap='round'; ctx.lineJoin='round';
+      strokes.forEach(s=>{
+        if(s.pts.length<1) return;
+        ctx.strokeStyle=s.color; ctx.lineWidth=s.width||2.5;
+        ctx.beginPath(); ctx.moveTo(s.pts[0].x, s.pts[0].y);
+        for(let i=1;i<s.pts.length;i++) ctx.lineTo(s.pts[i].x, s.pts[i].y);
+        ctx.stroke();
+      });
+      if(curStroke && curStroke.pts.length){
+        ctx.strokeStyle=curStroke.color; ctx.lineWidth=curStroke.width||2.5;
+        ctx.beginPath(); ctx.moveTo(curStroke.pts[0].x, curStroke.pts[0].y);
+        for(let i=1;i<curStroke.pts.length;i++) ctx.lineTo(curStroke.pts[i].x, curStroke.pts[i].y);
+        ctx.stroke();
+      }
+      return;
+    }
     const sX=Math.floor(-offX/zoom)-1, eX=Math.ceil((cv.width-offX)/zoom)+1;
     const sY=Math.floor(-offY/zoom)-1, eY=Math.ceil((cv.height-offY)/zoom)+1;
     // 격자
@@ -905,6 +993,12 @@
 
   function start(e){
     dragging=true; const p=pos(e); lx=p.x; ly=p.y;
+    // 스케치 모드: 자유 필기 시작
+    if(sketchMode){
+      curStroke={ color: eraserOn?'#ffffff':penColor, width: eraserOn?18:2.5, pts:[{x:p.x,y:p.y}] };
+      draw();
+      return;
+    }
     const m=toMath(p.x,p.y);
     if(mode==='point'){
       const i=points.findIndex(q=>q.x===m.x&&q.y===m.y);
@@ -937,13 +1031,22 @@
     return Math.abs(m.y-(e.a*m.x+e.b))<0.4;
   }
   function move(e){
-    const p=pos(e); const m=toMath(p.x,p.y);
+    const p=pos(e);
+    // 스케치 모드: 획에 점 추가
+    if(sketchMode){
+      if(dragging && curStroke){ curStroke.pts.push({x:p.x,y:p.y}); draw(); }
+      return;
+    }
+    const m=toMath(p.x,p.y);
     document.getElementById('coord').textContent=`(${m.x}, ${m.y})`;
     if(dragging && mode==='move'){ offX+=p.x-lx; offY+=p.y-ly; lx=p.x; ly=p.y; draw(); }
   }
+  function endStroke(){
+    if(sketchMode && curStroke){ if(curStroke.pts.length) strokes.push(curStroke); curStroke=null; draw(); }
+  }
   cv.addEventListener('mousedown',start);
   cv.addEventListener('mousemove',move);
-  window.addEventListener('mouseup',()=>dragging=false);
+  window.addEventListener('mouseup',()=>{ endStroke(); dragging=false; });
 
   // ===== 터치: 한 손가락=기존 동작, 두 손가락=핀치 줌/이동 =====
   let pinch=null; // {dist, cx, cy}
@@ -953,7 +1056,7 @@
 
   cv.addEventListener('touchstart', e=>{
     e.preventDefault();
-    if(e.touches.length===2){
+    if(!sketchMode && e.touches.length===2){
       dragging=false; selForLine=selForLine; // 진행 중 단일터치 취소
       pinch={ dist:touchDist(e.touches), mid:touchMid(e.touches) };
     } else if(e.touches.length===1){
@@ -963,17 +1066,15 @@
 
   cv.addEventListener('touchmove', e=>{
     e.preventDefault();
-    if(e.touches.length===2 && pinch){
+    if(!sketchMode && e.touches.length===2 && pinch){
       const newDist=touchDist(e.touches);
       const newMid=touchMid(e.touches);
-      // 확대/축소 (중심을 두 손가락 중점에 고정)
       let factor=newDist/pinch.dist;
       const oldZoom=zoom;
       zoom=Math.max(15, Math.min(200, zoom*factor));
       const realFactor=zoom/oldZoom;
       offX = newMid.x - (pinch.mid.x - offX) * realFactor;
       offY = newMid.y - (pinch.mid.y - offY) * realFactor;
-      // 두 손가락 이동(패닝)도 함께
       offX += newMid.x - pinch.mid.x;
       offY += newMid.y - pinch.mid.y;
       pinch.dist=newDist; pinch.mid=newMid;
@@ -985,7 +1086,7 @@
 
   cv.addEventListener('touchend', e=>{
     if(e.touches.length<2) pinch=null;
-    if(e.touches.length===0) dragging=false;
+    if(e.touches.length===0){ endStroke(); dragging=false; }
   });
 
   // ===== 도구/색 =====
@@ -1002,7 +1103,7 @@
   }
   function clearAll(silent){
     if(!silent && !confirm('그린 것을 모두 지울까요?')) return;
-    points=[]; lines=[]; selForLine=[]; update();
+    points=[]; lines=[]; selForLine=[]; strokes=[]; curStroke=null; update();
   }
 
   // ===== 채점 =====
@@ -1028,17 +1129,26 @@
     const name=document.getElementById('stuName').value.trim();
     if(!cls||!name){ alert('반과 이름을 입력해 주세요.'); return; }
     if(!activeSub){ alert('문제를 선택해 주세요.'); return; }
-    if(lines.length<1){ alert('직선을 그려야 제출할 수 있어요.'); return; }
+    if(sketchMode){
+      if(strokes.length<1){ alert('풀이 과정을 노트에 적어 주세요.'); return; }
+    } else {
+      if(lines.length<1){ alert('직선을 그려야 제출할 수 있어요.'); return; }
+    }
     const xv=document.getElementById('ansX').value||'?';
     const yv=document.getElementById('ansY').value||'?';
 
     const btn=document.getElementById('submitBtn');
     btn.disabled=true; btn.textContent='전송 중...';
 
-    // 캔버스를 기준뷰로 캡처
-    const oz=zoom, ox=offX, oy=offY; resetView();
-    const img=cv.toDataURL('image/png');
-    zoom=oz; offX=ox; offY=oy; draw();
+    // 캔버스 캡처 (스케치는 뷰 개념 없이 그대로, 좌표평면은 기준뷰로)
+    let img;
+    if(sketchMode){
+      img=cv.toDataURL('image/png');
+    } else {
+      const oz=zoom, ox=offX, oy=offY; resetView();
+      img=cv.toDataURL('image/png');
+      zoom=oz; offX=ox; offY=oy; draw();
+    }
 
     // 매 제출마다 새 기록으로 저장 (덮어쓰지 않고 계속 쌓임)
     const ref=database.ref(DB_PATH).push();
