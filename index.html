@@ -1199,6 +1199,12 @@
     const g=document.getElementById('dashGrid');
     const data=(window.allData||[]).filter(d=>(cf==='all'||d.class===cf)&&(mf==='all'||d.subId===mf));
 
+    // [진단] 실제 로드된 전체 데이터 수를 콘솔과 화면 상단에 표시
+    console.log('[진단] allData 총 개수:', (window.allData||[]).length, '| 필터 후:', data.length, window.allData);
+    let diag=document.getElementById('diagBox');
+    if(!diag){ diag=document.createElement('div'); diag.id='diagBox'; diag.style.cssText='background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;'; g.parentNode.insertBefore(diag, g); }
+    diag.textContent = `[진단] 서버에서 불러온 제출 총 ${(window.allData||[]).length}개 (필터 후 ${data.length}개 표시)`;
+
     if(data.length===0){ g.innerHTML='<p style="color:var(--sub); font-size:15px; padding:8px;">아직 제출된 풀이가 없습니다.</p>'; return; }
 
     // 문제(subId)별로 그룹핑
