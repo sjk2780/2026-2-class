@@ -84,6 +84,39 @@
   .prompt .goals{margin-top:10px; font-size:14px; color:var(--sub);}
   .prompt .goals .eq{font-size:16px;}
   .goals .katex{color:inherit;}
+
+  /* 연립방정식 입력 패널 */
+  .eq-input{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;}
+  .eq-input-head{font-size:14px; font-weight:700; color:var(--sub); margin-bottom:14px;}
+  .eq-rows{display:flex; flex-direction:column; gap:12px;}
+  .eq-row{display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+  .eq-row .eq-dot{width:12px; height:12px; border-radius:50%; flex-shrink:0; margin-right:4px;}
+  .eq-row input{
+    width:56px; text-align:center; padding:9px 6px; border:1px solid var(--line); border-radius:8px;
+    font-family:'KaTeX_Math','Noto Serif KR',serif; font-style:italic; font-weight:700; font-size:17px; outline:none;
+  }
+  .eq-row input:focus{border-color:var(--ink);}
+  .eq-row .ktx{display:inline-flex; align-items:center; min-height:24px; margin:0 2px;}
+  .eq-row .ktx .katex{font-size:1.15em;}
+  .eq-preview{margin-top:16px; padding:14px 16px; background:#F8F8F6; border:1px solid var(--line); border-radius:10px; display:none;}
+  .eq-preview.show{display:block;}
+  .eq-preview .cap{font-size:12.5px; font-weight:700; color:var(--sub); margin-bottom:8px;}
+  .eq-preview .sys .katex{font-size:1.3em;}
+  .eq-preview .sys .katex-display{margin:0; text-align:left;}
+  .eq-actions{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+  .btn-draw{
+    padding:11px 22px; font-size:15px; font-weight:700; color:#fff; background:var(--ink);
+    border:none; border-radius:8px; cursor:pointer; font-family:inherit;
+  }
+  .btn-ghost{
+    padding:11px 18px; font-size:14px; font-weight:600; color:var(--sub); background:none;
+    border:1px solid var(--line); border-radius:8px; cursor:pointer; font-family:inherit;
+  }
+  .eq-result{margin-top:16px; font-size:16px; min-height:24px;}
+  .eq-result .rtag{font-weight:700;}
+  .eq-result.ok{color:var(--ink);}
+  .eq-result.none{color:var(--red);}
+  .eq-result.inf{color:var(--ok);}
   .sys-eq{margin-top:12px;}
   .sys-eq .katex{font-size:1.35em;}
   .sys-eq .katex-display{margin:0; text-align:left;}
@@ -200,6 +233,35 @@
   <div class="prompt" id="prompt">
     <div class="label">자유 탐구</div>
     <div class="body">좌표평면에 <b>두 직선</b>을 그려 보세요. 두 직선이 만나면, 그 교점을 각 직선의 식에 넣었을 때 등식이 성립하는지 오른쪽에서 확인할 수 있어요.</div>
+  </div>
+
+  <!-- 연립방정식 입력 (자유 탐구 탭에서만) -->
+  <div class="eq-input" id="eqInput">
+    <div class="eq-input-head">연립방정식을 세워 보세요 — 계수를 넣고 그래프로 그려 봐요</div>
+    <div class="eq-rows">
+      <div class="eq-row">
+        <span class="eq-dot" style="background:#DC2626"></span>
+        <input type="text" id="a1" placeholder="a" inputmode="text" oninput="updateEqPreview()"><span class="ktx" id="kx1"></span>
+        <span class="ktx" id="kp1"></span>
+        <input type="text" id="b1" placeholder="b" inputmode="text" oninput="updateEqPreview()"><span class="ktx" id="ky1"></span>
+        <span class="ktx" id="ke1"></span>
+        <input type="text" id="c1" placeholder="c" inputmode="text" oninput="updateEqPreview()">
+      </div>
+      <div class="eq-row">
+        <span class="eq-dot" style="background:#2563EB"></span>
+        <input type="text" id="a2" placeholder="a" inputmode="text" oninput="updateEqPreview()"><span class="ktx" id="kx2"></span>
+        <span class="ktx" id="kp2"></span>
+        <input type="text" id="b2" placeholder="b" inputmode="text" oninput="updateEqPreview()"><span class="ktx" id="ky2"></span>
+        <span class="ktx" id="ke2"></span>
+        <input type="text" id="c2" placeholder="c" inputmode="text" oninput="updateEqPreview()">
+      </div>
+    </div>
+    <div class="eq-preview" id="eqPreview"></div>
+    <div class="eq-actions">
+      <button class="btn-draw" onclick="drawFromEquations()">그래프로 그리기</button>
+      <button class="btn-ghost" onclick="clearEquationLines()">식 직선 지우기</button>
+    </div>
+    <div class="eq-result" id="eqResult"></div>
   </div>
 
   <div class="toolbar">
@@ -363,6 +425,8 @@
     const lx=document.getElementById('labelX'), ly=document.getElementById('labelY');
     if(lx) lx.innerHTML=renderTex('x =','x =',true);
     if(ly) ly.innerHTML=renderTex('y =','y =',true);
+    renderEqLabels();
+    switchTab('free'); // 초기 프롬프트 + 식 입력 패널 세팅
   };
   window.addEventListener('resize', resize);
 
@@ -414,6 +478,143 @@
     document.getElementById('statusTxt').innerText = '오프라인 모드';
   }
 
+  // ===== 식 입력 → 그래프 =====
+  // 분수/소수/정수 파싱 ("1/2", "-3", "2.5")
+  function parseCoef(s){
+    s=(s||'').toString().trim().replace(/\s/g,'').replace(/−/g,'-');
+    if(s==='') return null;
+    if(s.includes('/')){
+      const [n,d]=s.split('/');
+      const nn=parseFloat(n), dd=parseFloat(d);
+      if(isNaN(nn)||isNaN(dd)||dd===0) return NaN;
+      return nn/dd;
+    }
+    const v=parseFloat(s);
+    return isNaN(v)?NaN:v;
+  }
+
+  // ax+by=c 에서 직선 위 두 점 구하기 (b=0이면 수직선)
+  function lineFromCoef(a,b,c){
+    if(a===0 && b===0) return null; // 식이 아님
+    if(b===0){ // ax=c → x=c/a (수직선)
+      const x=c/a; return {p1:{x, y:0}, p2:{x, y:1}};
+    }
+    // y=(c-ax)/b : x=0, x=4 두 점
+    const y0=(c-a*0)/b, y4=(c-a*4)/b;
+    return {p1:{x:0, y:y0}, p2:{x:4, y:y4}};
+  }
+
+  // 두 식(ax+by=c)의 교점 판정
+  function solveSystem(a1,b1,c1,a2,b2,c2){
+    const det=a1*b2-a2*b1;
+    if(Math.abs(det)<1e-9){
+      // 평행 or 일치: 비율 비교
+      // a1:b1:c1 == a2:b2:c2 이면 일치
+      const cross1=a1*c2-a2*c1, cross2=b1*c2-b2*c1;
+      if(Math.abs(cross1)<1e-9 && Math.abs(cross2)<1e-9) return {type:'infinite'};
+      return {type:'none'};
+    }
+    const x=(c1*b2-c2*b1)/det;
+    const y=(a1*c2-a2*c1)/det;
+    return {type:'point', x:round2(x), y:round2(y)};
+  }
+
+  let eqLines=[]; // 식으로 그린 직선(빨강/파랑)만 별도 관리해 지우기 편하게
+
+  // 입력 영역의 x, y, +, = 를 KaTeX로 렌더 (한 번만)
+  function renderEqLabels(){
+    const map={ kx1:'x', ky1:'y', kp1:'+', ke1:'=', kx2:'x', ky2:'y', kp2:'+', ke2:'=' };
+    Object.entries(map).forEach(([id,tex])=>{
+      const el=document.getElementById(id);
+      if(el) el.innerHTML=renderTex(tex, tex, true);
+    });
+  }
+
+  // 계수 → 항 문자열 (KaTeX). 예: 2,x → "2x", 1,x → "x", -1,x → "-x", 0,x → ""
+  function termTex(coefStr, varName){
+    const v=parseCoef(coefStr);
+    if(v===null || isNaN(v) || v===0) return {tex:'', val:v};
+    if(v===1) return {tex:varName, val:v};
+    if(v===-1) return {tex:'-'+varName, val:v};
+    return {tex:coefStr.trim().replace(/−/g,'-')+varName, val:v};
+  }
+
+  // 한 방정식의 KaTeX 문자열 조립 (ax+by=c)
+  function eqTex(aStr,bStr,cStr){
+    const ax=termTex(aStr,'x'), by=termTex(bStr,'y');
+    const c=parseCoef(cStr);
+    let left='';
+    if(ax.tex){ left+=ax.tex; }
+    if(by.tex){
+      if(left==='') left+=by.tex;
+      else left += (by.val<0? ' - '+by.tex.replace('-','') : ' + '+by.tex);
+    }
+    if(left==='') left='0';
+    const cShown=(c===null||isNaN(c))?'\\;?\\;':(cStr.trim().replace(/−/g,'-'));
+    return `${left} = ${cShown}`;
+  }
+
+  // 실시간 미리보기: 학생이 세운 연립방정식을 중괄호로
+  function updateEqPreview(){
+    const prev=document.getElementById('eqPreview');
+    const ids=['a1','b1','c1','a2','b2','c2'].map(id=>document.getElementById(id).value);
+    const anyInput = ids.some(v=>v.trim()!=='');
+    if(!anyInput){ prev.className='eq-preview'; prev.innerHTML=''; return; }
+    const e1=eqTex(ids[0],ids[1],ids[2]);
+    const e2=eqTex(ids[3],ids[4],ids[5]);
+    const sysTex=`\\begin{cases} ${e1} \\\\ ${e2} \\end{cases}`;
+    prev.className='eq-preview show';
+    prev.innerHTML=`<div class="cap">내가 세운 연립방정식</div><div class="sys">${renderTex(sysTex, sysTex, false)}</div>`;
+  }
+
+  function drawFromEquations(){
+    const a1=parseCoef(document.getElementById('a1').value);
+    const b1=parseCoef(document.getElementById('b1').value);
+    const c1=parseCoef(document.getElementById('c1').value);
+    const a2=parseCoef(document.getElementById('a2').value);
+    const b2=parseCoef(document.getElementById('b2').value);
+    const c2=parseCoef(document.getElementById('c2').value);
+    const res=document.getElementById('eqResult');
+
+    const vals=[a1,b1,c1,a2,b2,c2];
+    if(vals.some(v=>v===null)){ res.className='eq-result none'; res.textContent='모든 칸을 채워 주세요. (계수가 0이면 0을 넣어요)'; return; }
+    if(vals.some(v=>isNaN(v))){ res.className='eq-result none'; res.textContent='숫자로 입력해 주세요. 분수는 1/2 처럼 쓸 수 있어요.'; return; }
+    if(a1===0&&b1===0){ res.className='eq-result none'; res.textContent='①번 식의 x, y 계수가 모두 0이면 직선이 아니에요.'; return; }
+    if(a2===0&&b2===0){ res.className='eq-result none'; res.textContent='②번 식의 x, y 계수가 모두 0이면 직선이 아니에요.'; return; }
+
+    // 기존 식 직선 제거 후 새로 추가
+    lines=lines.filter(l=>!l.fromEq);
+    const L1=lineFromCoef(a1,b1,c1), L2=lineFromCoef(a2,b2,c2);
+    eqLines=[
+      {p1:L1.p1, p2:L1.p2, color:'#DC2626', fromEq:true},
+      {p1:L2.p1, p2:L2.p2, color:'#2563EB', fromEq:true},
+    ];
+    lines.push(...eqLines);
+
+    // 교점 판정
+    const s=solveSystem(a1,b1,c1,a2,b2,c2);
+    if(s.type==='point'){
+      res.className='eq-result ok';
+      res.innerHTML=`두 직선이 한 점에서 만나요. <span class="rtag">교점: ${renderTex(`(${texNum(s.x)},\\ ${texNum(s.y)})`,`(${fmtNum(s.x)}, ${fmtNum(s.y)})`,true)}</span> — 이 좌표가 곧 연립방정식의 해예요.`;
+    } else if(s.type==='none'){
+      res.className='eq-result none';
+      res.innerHTML='두 직선이 <span class="rtag">평행</span>해요. 교점이 없으니 <span class="rtag">해가 없습니다</span>.';
+    } else {
+      res.className='eq-result inf';
+      res.innerHTML='두 직선이 <span class="rtag">일치</span>해요. 교점이 무수히 많으니 <span class="rtag">해가 무수히 많습니다</span>.';
+    }
+    // 그래프가 교점을 담도록 뷰 맞춤
+    resetView();
+    draw();
+  }
+
+  function clearEquationLines(){
+    lines=lines.filter(l=>!l.fromEq);
+    eqLines=[];
+    document.getElementById('eqResult').textContent='';
+    document.getElementById('eqResult').className='eq-result';
+    draw();
+  }
   // ===== 탭 =====
   function switchTab(t){
     tab=t;
@@ -423,11 +624,14 @@
     const showSubmit = (t==='submit');
     document.getElementById('submitFields').style.display = showSubmit?'block':'none';
     document.getElementById('myRecords').style.display = (showSubmit && !isTeacher)?'block':'none';
+    // 식 입력은 자유 탐구 탭에서만
+    document.getElementById('eqInput').style.display = (t==='free')?'block':'none';
     // 패널: 제출 탭에서는 대입 확인 대신 안내
     clearAll(true);
     if(t==='free'){
       activeMission=null; activeSub=null;
-      setPrompt('자유 탐구','좌표평면에 <b>두 직선</b>을 그려 보세요. 두 직선이 만나면, 그 교점을 각 직선의 식에 넣었을 때 등식이 성립하는지 오른쪽에서 확인할 수 있어요.','');
+      clearEquationLines();
+      setPrompt('자유 탐구','아래에 <b>연립방정식</b>을 세우고 “그래프로 그리기”를 눌러 보세요. 두 식이 두 직선으로 그려지고, 교점의 좌표가 곧 연립방정식의 해예요. 직접 손으로 직선을 그려 확인해 볼 수도 있어요.','');
       renderMissionBar();
     } else if(t==='mission'){
       activeSub=null;
@@ -737,9 +941,49 @@
   cv.addEventListener('mousedown',start);
   cv.addEventListener('mousemove',move);
   window.addEventListener('mouseup',()=>dragging=false);
-  cv.addEventListener('touchstart',e=>{e.preventDefault();start(e);},{passive:false});
-  cv.addEventListener('touchmove',e=>{e.preventDefault();move(e);},{passive:false});
-  window.addEventListener('touchend',()=>dragging=false);
+
+  // ===== 터치: 한 손가락=기존 동작, 두 손가락=핀치 줌/이동 =====
+  let pinch=null; // {dist, cx, cy}
+  function touchDist(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
+  function touchMid(t){ const r=cv.getBoundingClientRect();
+    return { x:(t[0].clientX+t[1].clientX)/2 - r.left, y:(t[0].clientY+t[1].clientY)/2 - r.top }; }
+
+  cv.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    if(e.touches.length===2){
+      dragging=false; selForLine=selForLine; // 진행 중 단일터치 취소
+      pinch={ dist:touchDist(e.touches), mid:touchMid(e.touches) };
+    } else if(e.touches.length===1){
+      pinch=null; start(e);
+    }
+  }, {passive:false});
+
+  cv.addEventListener('touchmove', e=>{
+    e.preventDefault();
+    if(e.touches.length===2 && pinch){
+      const newDist=touchDist(e.touches);
+      const newMid=touchMid(e.touches);
+      // 확대/축소 (중심을 두 손가락 중점에 고정)
+      let factor=newDist/pinch.dist;
+      const oldZoom=zoom;
+      zoom=Math.max(15, Math.min(200, zoom*factor));
+      const realFactor=zoom/oldZoom;
+      offX = newMid.x - (pinch.mid.x - offX) * realFactor;
+      offY = newMid.y - (pinch.mid.y - offY) * realFactor;
+      // 두 손가락 이동(패닝)도 함께
+      offX += newMid.x - pinch.mid.x;
+      offY += newMid.y - pinch.mid.y;
+      pinch.dist=newDist; pinch.mid=newMid;
+      draw();
+    } else if(e.touches.length===1 && !pinch){
+      move(e);
+    }
+  }, {passive:false});
+
+  cv.addEventListener('touchend', e=>{
+    if(e.touches.length<2) pinch=null;
+    if(e.touches.length===0) dragging=false;
+  });
 
   // ===== 도구/색 =====
   function setMode(m){
