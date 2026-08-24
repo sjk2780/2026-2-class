@@ -1040,12 +1040,9 @@
     const img=cv.toDataURL('image/png');
     zoom=oz; offX=ox; offY=oy; draw();
 
-    // 고정 키: 같은 학생이 같은 문제를 다시 내면 이전 제출을 덮어씀
-    const recKey = `${safeKey(cls)}_${safeKey(name)}_${activeSub}`;
-
-    // 구독 콜백이 즉시 실행돼도 내 제출로 인식되도록, set 전에 키를 저장
-    saveKey(recKey);
-    const ref=database.ref(DB_PATH+'/'+recKey);
+    // 매 제출마다 새 기록으로 저장 (덮어쓰지 않고 계속 쌓임)
+    const ref=database.ref(DB_PATH).push();
+    saveKey(ref.key); // 내 제출로 인식되도록 키 저장
     ref.set({
       class:cls, name:name, subId:activeSub, label:subProblems[activeSub].label,
       x:xv, y:yv, img:img, points:points, lines:lines, time:Date.now()
