@@ -16,6 +16,8 @@
     --panel:#FFFFFF;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  /* 입력칸을 누르면(포커스) 회색 안내 글자가 사라지도록 */
+  input:focus::placeholder{ color:transparent; }
   body{
     margin:0; background:var(--bg); color:var(--ink);
     font-family:'Pretendard',system-ui,sans-serif; font-size:16px; line-height:1.5;
@@ -402,7 +404,7 @@
   };
 
   // ===== 제출용 문제 (교과서 4.7) =====
-  const DB_PATH='crossing_v2';
+  const DB_PATH='math_results/crossing'; // 이미 열려있는 math_results 규칙 사용, 하위 폴더로 예전 데이터와 분리
   const subProblems = {
     p1_1:{ label:'문제 1-(1)', intro:'연립방정식의 해를 그래프로 구하시오.', tex:'\\begin{cases} x - 2y = -4 \\\\ 2x + 3y = -1 \\end{cases}', answer:{type:'point',x:-2,y:1} },
     p1_2:{ label:'문제 1-(2)', intro:'연립방정식의 해를 그래프로 구하시오.', tex:'\\begin{cases} 2x + 3y = -1 \\\\ 4x - y = 5 \\end{cases}', answer:{type:'point',x:1,y:-1} },
