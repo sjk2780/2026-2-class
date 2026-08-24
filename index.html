@@ -454,6 +454,32 @@
 
   function resize(){ cv.width=box.clientWidth; cv.height=box.clientHeight; draw(); }
   function resetView(){ zoom=35; offX=cv.width/2; offY=cv.height/2; draw(); }
+
+  // 학생이 그린 점·직선이 모두 화면에 들어오도록 뷰(줌·위치) 자동 조정
+  function fitViewToContent(){
+    // 그린 요소가 없으면 기본 뷰
+    const pts=[];
+    points.forEach(p=>pts.push(p));
+    lines.forEach(l=>{ pts.push(l.p1); pts.push(l.p2); });
+    if(pts.length===0){ resetView(); return; }
+    // 원점(0,0)도 항상 포함해 좌표축 감각 유지
+    pts.push({x:0,y:0});
+    let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+    pts.forEach(p=>{ minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x); minY=Math.min(minY,p.y); maxY=Math.max(maxY,p.y); });
+    // 여백(단위) 추가
+    const padU=1.5;
+    minX-=padU; maxX+=padU; minY-=padU; maxY+=padU;
+    const spanX=Math.max(maxX-minX, 2);
+    const spanY=Math.max(maxY-minY, 2);
+    // 화면에 맞는 줌 (가로/세로 중 작은 쪽 기준), 범위 제한
+    const zx=cv.width/spanX, zy=cv.height/spanY;
+    zoom=Math.max(8, Math.min(200, Math.min(zx, zy)));
+    // 내용 중심을 화면 중앙에
+    const cxU=(minX+maxX)/2, cyU=(minY+maxY)/2;
+    offX=cv.width/2 - cxU*zoom;
+    offY=cv.height/2 + cyU*zoom;
+    draw();
+  }
   function zoomBy(f){
     const o=zoom; zoom=Math.max(15,Math.min(200,zoom*f));
     offX=cv.width/2-(cv.width/2-offX)*(zoom/o);
@@ -475,13 +501,7 @@
       fillMissionFilter();
       if(database){
         database.ref(DB_PATH).on('value', snap=>{
-          // [진단] 서버가 준 원시 데이터를 그대로 확인
-          const raw=snap.val();
-          window.__rawCount = raw ? Object.keys(raw).length : 0;
-          console.log('[진단] snap.val() 원시:', raw);
-          console.log('[진단] 최상위 키 개수:', window.__rawCount, raw?Object.keys(raw):[]);
-          window.allData=[]; snap.forEach(c=>window.allData.push({id:c.key, ...c.val()}));
-          console.log('[진단] forEach로 담은 개수:', window.allData.length);
+          window.allData=[]; snap.forEach(c=>{ window.allData.push({id:c.key, ...c.val()}); });
           window.allData.sort((a,b)=>b.time-a.time);
           renderDash();
         }, err=>{ console.warn('대시보드 구독 오류:', err); });
@@ -1146,12 +1166,13 @@
     const btn=document.getElementById('submitBtn');
     btn.disabled=true; btn.textContent='전송 중...';
 
-    // 캔버스 캡처 (스케치는 뷰 개념 없이 그대로, 좌표평면은 기준뷰로)
+    // 캔버스 캡처 (스케치는 뷰 개념 없이 그대로, 좌표평면은 그린 내용이 다 보이게 맞춤)
     let img;
     if(sketchMode){
       img=cv.toDataURL('image/png');
     } else {
-      const oz=zoom, ox=offX, oy=offY; resetView();
+      const oz=zoom, ox=offX, oy=offY;
+      fitViewToContent();   // 학생이 그린 점·직선이 모두 보이도록 뷰 자동 조정
       img=cv.toDataURL('image/png');
       zoom=oz; offX=ox; offY=oy; draw();
     }
@@ -1159,12 +1180,11 @@
     // 매 제출마다 새 기록으로 저장 (덮어쓰지 않고 계속 쌓임)
     const ref=database.ref(DB_PATH).push();
     saveKey(ref.key); // 내 제출로 인식되도록 키 저장
-    console.log('[진단] 저장 경로:', DB_PATH, '| 생성 키:', ref.key);
     ref.set({
       class:cls, name:name, subId:activeSub, label:subProblems[activeSub].label,
       x:xv, y:yv, img:img, points:points, lines:lines, time:Date.now()
     }).then(()=>{
-      alert('제출 완료! (저장 키: ' + ref.key + ')');
+      alert('제출되었습니다! 아래 “내가 제출한 풀이”에서 확인할 수 있어요.');
       btn.disabled=false; btn.textContent='그래프와 답안 제출하기';
       refreshMyRecords(); // 구독을 기다리지 않고 즉시 내 목록 갱신
       setTimeout(()=>{ const mr=document.getElementById('myRecords'); if(mr && mr.style.display!=='none') mr.scrollIntoView({behavior:'smooth', block:'start'}); }, 300);
@@ -1206,12 +1226,6 @@
     const g=document.getElementById('dashGrid');
     const data=(window.allData||[]).filter(d=>(cf==='all'||d.class===cf)&&(mf==='all'||d.subId===mf));
 
-    // [진단] 실제 로드된 전체 데이터 수를 콘솔과 화면 상단에 표시
-    console.log('[진단] allData 총 개수:', (window.allData||[]).length, '| 필터 후:', data.length, window.allData);
-    let diag=document.getElementById('diagBox');
-    if(!diag){ diag=document.createElement('div'); diag.id='diagBox'; diag.style.cssText='background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;'; g.parentNode.insertBefore(diag, g); }
-    diag.textContent = `[진단] 서버 원시 ${window.__rawCount||0}개 · forEach ${(window.allData||[]).length}개 · 필터 후 ${data.length}개 표시`;
-
     if(data.length===0){ g.innerHTML='<p style="color:var(--sub); font-size:15px; padding:8px;">아직 제출된 풀이가 없습니다.</p>'; return; }
 
     // 문제(subId)별로 그룹핑
@@ -1252,7 +1266,7 @@
   function refreshDash(){
     if(!database) return;
     database.ref(DB_PATH).once('value').then(snap=>{
-      window.allData=[]; snap.forEach(c=>window.allData.push({id:c.key, ...c.val()}));
+      window.allData=[]; snap.forEach(c=>{ window.allData.push({id:c.key, ...c.val()}); });
       window.allData.sort((a,b)=>b.time-a.time);
       renderDash();
     }).catch(err=>console.warn('대시보드 새로고침 오류:', err));
