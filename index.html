@@ -1153,11 +1153,12 @@
     // 매 제출마다 새 기록으로 저장 (덮어쓰지 않고 계속 쌓임)
     const ref=database.ref(DB_PATH).push();
     saveKey(ref.key); // 내 제출로 인식되도록 키 저장
+    console.log('[진단] 저장 경로:', DB_PATH, '| 생성 키:', ref.key);
     ref.set({
       class:cls, name:name, subId:activeSub, label:subProblems[activeSub].label,
       x:xv, y:yv, img:img, points:points, lines:lines, time:Date.now()
     }).then(()=>{
-      alert('제출되었습니다! 아래 “내가 제출한 풀이”에서 확인할 수 있어요.');
+      alert('제출 완료! (저장 키: ' + ref.key + ')');
       btn.disabled=false; btn.textContent='그래프와 답안 제출하기';
       refreshMyRecords(); // 구독을 기다리지 않고 즉시 내 목록 갱신
       setTimeout(()=>{ const mr=document.getElementById('myRecords'); if(mr && mr.style.display!=='none') mr.scrollIntoView({behavior:'smooth', block:'start'}); }, 300);
