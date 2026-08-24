@@ -193,8 +193,9 @@
   .dash-head h2{font-size:18px; margin:0;}
   .filters{display:flex; gap:8px;}
   .filters select{padding:8px 11px; font-size:14px; border:1px solid var(--line); border-radius:8px; font-family:inherit; background:#fff;}
-  .stat{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; text-align:center; font-size:15px; font-weight:600; margin-bottom:18px;}
-  .stat b{font-size:18px;}
+  .dash-section{margin-bottom:28px;}
+  .dash-section-title{font-size:16px; font-weight:700; color:var(--ink); margin-bottom:12px; padding-bottom:8px; border-bottom:2px solid var(--line); display:flex; align-items:center; gap:10px;}
+  .dash-section-title .cnt{font-size:13px; font-weight:600; color:var(--sub);}
 
   /* 모달 */
   .modal{display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; justify-content:center; align-items:center; padding:20px;}
@@ -346,8 +347,7 @@
         <button class="btn-ghost" onclick="refreshDash()" style="padding:8px 14px;">↻ 새로고침</button>
       </div>
     </div>
-    <div class="stat" id="stat">제출된 풀이가 없습니다.</div>
-    <div class="grid" id="dashGrid"></div>
+    <div id="dashGrid"></div>
   </div>
 </div>
 
@@ -1090,21 +1090,38 @@
     const mf=document.getElementById('fMission').value;
     const g=document.getElementById('dashGrid');
     const data=(window.allData||[]).filter(d=>(cf==='all'||d.class===cf)&&(mf==='all'||d.subId===mf));
-    const total=data.length;
-    document.getElementById('stat').innerHTML = total===0 ? '제출된 풀이가 없습니다.'
-      : `제출 <b>${total}</b>명`;
+
+    if(data.length===0){ g.innerHTML='<p style="color:var(--sub); font-size:15px; padding:8px;">아직 제출된 풀이가 없습니다.</p>'; return; }
+
+    // 문제(subId)별로 그룹핑
+    const groups={};
+    Object.keys(subProblems).forEach(id=>{ groups[id]=[]; });
+    data.forEach(d=>{ if(!groups[d.subId]) groups[d.subId]=[]; groups[d.subId].push(d); });
+
     g.innerHTML='';
-    data.forEach(d=>{
-      const el=document.createElement('div'); el.className='rec';
-      const t=new Date(d.time); const ts=`${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`;
-      el.innerHTML=`
-        <div class="top">
-          <span>${d.class==='교사'?'시연':d.class+'반'} ${d.name}</span>
-          <button class="del" onclick="delRec('${d.id}')">삭제</button>
-        </div>
-        <img src="${d.img}" onclick='openInspect(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
-        <div class="bot">${d.label} · 답: <b>x = ${d.x}, y = ${d.y}</b> · ${ts}</div>`;
-      g.appendChild(el);
+    Object.keys(subProblems).forEach(subId=>{
+      const items=groups[subId]||[];
+      if(items.length===0) return; // 제출 없는 문제는 표시 안 함
+      // 문제 섹션 헤더
+      const section=document.createElement('div');
+      section.className='dash-section';
+      section.innerHTML=`<div class="dash-section-title">${subProblems[subId].label} <span class="cnt">${items.length}명 제출</span></div>`;
+      const grid=document.createElement('div');
+      grid.className='grid';
+      items.forEach(d=>{
+        const el=document.createElement('div'); el.className='rec';
+        const t=new Date(d.time); const ts=`${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`;
+        el.innerHTML=`
+          <div class="top">
+            <span>${d.class==='교사'?'시연':d.class+'반'} ${d.name}</span>
+            <button class="del" onclick="delRec('${d.id}')">삭제</button>
+          </div>
+          <img src="${d.img}" onclick='openInspect(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+          <div class="bot">답: <b>x = ${d.x}, y = ${d.y}</b> · ${ts}</div>`;
+        grid.appendChild(el);
+      });
+      section.appendChild(grid);
+      g.appendChild(section);
     });
   }
   function delRec(id){ if(database && confirm('삭제할까요?')) database.ref(DB_PATH+'/'+id).remove(); }
