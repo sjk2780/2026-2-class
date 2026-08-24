@@ -341,6 +341,7 @@
         <select id="fMission" onchange="renderDash()">
           <option value="all">모든 문제</option>
         </select>
+        <button class="btn-ghost" onclick="refreshDash()" style="padding:8px 14px;">↻ 새로고침</button>
       </div>
     </div>
     <div class="stat" id="stat">제출된 풀이가 없습니다.</div>
@@ -456,7 +457,7 @@
           window.allData=[]; snap.forEach(c=>window.allData.push({id:c.key, ...c.val()}));
           window.allData.sort((a,b)=>b.time-a.time);
           renderDash();
-        });
+        }, err=>{ console.warn('대시보드 구독 오류:', err); });
       }
     } else {
       if(database){
@@ -1106,6 +1107,16 @@
     });
   }
   function delRec(id){ if(database && confirm('삭제할까요?')) database.ref(DB_PATH+'/'+id).remove(); }
+
+  // 교사: DB에서 직접 다시 읽어 대시보드 갱신 (실시간 구독이 놓쳤을 때 대비)
+  function refreshDash(){
+    if(!database) return;
+    database.ref(DB_PATH).once('value').then(snap=>{
+      window.allData=[]; snap.forEach(c=>window.allData.push({id:c.key, ...c.val()}));
+      window.allData.sort((a,b)=>b.time-a.time);
+      renderDash();
+    }).catch(err=>console.warn('대시보드 새로고침 오류:', err));
+  }
 
   function fillMissionFilter(){
     const sel=document.getElementById('fMission');
