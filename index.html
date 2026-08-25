@@ -758,7 +758,9 @@
         panel.style.display='';
         document.getElementById('verdict').className='verdict wait';
         document.getElementById('verdict').innerHTML='두 직선의 <b>교점</b>을 눌러 좌표를 확인해 보세요.';
-        document.getElementById('checkArea').innerHTML='';
+        document.getElementById('checkArea').innerHTML=
+          '<button class="btn-ghost" style="margin-top:12px; width:100%;" onclick="clearFoundPoints()">찍은 교점 지우기</button>'+
+          '<div class="hint" style="display:block; margin-top:10px;">💡 교점을 누르면 좌표가 표시돼요. 잘못 찍었으면 그 점을 다시 누르거나 아래 버튼으로 지울 수 있어요.</div>';
         document.getElementById('hint').style.display='none';
       }
       mode='readpoint'; // 교점 클릭 모드
@@ -767,6 +769,15 @@
       if(!sketchMode && toolbar) toolbar.style.display='';
       if(mode==='readpoint') mode='move';
     }
+  }
+
+  // 읽기 모드: 찍은 교점 모두 지우기
+  function clearFoundPoints(){
+    foundPoints=[];
+    const v=document.getElementById('verdict');
+    v.className='verdict wait';
+    v.innerHTML='두 직선의 <b>교점</b>을 눌러 좌표를 확인해 보세요.';
+    draw();
   }
 
   // 스케치 모드에 따라 UI(도구·패널·힌트) 조정
@@ -987,10 +998,11 @@
     const verdict=document.getElementById('verdict');
     const area=document.getElementById('checkArea');
     const hint=document.getElementById('hint');
-    area.innerHTML='';
 
-    // 읽기 모드(문제1): 교점 클릭 안내를 유지, 여기서 덮어쓰지 않음
+    // 읽기 모드(문제1): 교점 클릭 UI(버튼 등)를 유지, 여기서 건드리지 않음
     if(presetMode){ hint.style.display='none'; return; }
+
+    area.innerHTML='';
 
     // 제출 탭: 자동 대입 확인을 숨기고 스스로 풀도록 안내
     if(tab==='submit'){
@@ -1096,6 +1108,21 @@
     }
     const m=toMath(p.x,p.y);
     if(mode==='readpoint'){
+      // 먼저: 이미 찍은 교점 근처를 누르면 그 점을 지움(토글)
+      const rmIdx=foundPoints.findIndex(q=>Math.hypot(q.x-m.x, q.y-m.y)<0.8);
+      if(rmIdx!==-1){
+        foundPoints.splice(rmIdx,1);
+        if(foundPoints.length){
+          const last=foundPoints[foundPoints.length-1];
+          document.getElementById('verdict').className='verdict yes';
+          document.getElementById('verdict').innerHTML=`교점: ${renderTex(`(${texNum(last.x)},\\ ${texNum(last.y)})`,`(${fmtNum(last.x)}, ${fmtNum(last.y)})`,true)}`;
+        } else {
+          document.getElementById('verdict').className='verdict wait';
+          document.getElementById('verdict').innerHTML='두 직선의 <b>교점</b>을 눌러 좌표를 확인해 보세요.';
+        }
+        draw();
+        return;
+      }
       // 여러 직선의 모든 쌍의 교점 중 클릭 위치에 가장 가까운 것을 찾음
       let best=null, bestDist=1.2;
       for(let i=0;i<lines.length;i++){
@@ -1107,7 +1134,6 @@
         }
       }
       if(best){
-        // 이미 찾은 교점이 아니면 추가
         if(!foundPoints.some(q=>Math.abs(q.x-best.x)<1e-6 && Math.abs(q.y-best.y)<1e-6)){
           foundPoints.push(best);
         }
