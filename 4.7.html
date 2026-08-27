@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>두 그래프의 교점 탐구</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:ital,wght@1,500;1,700&display=swap');
+
+  :root{
+    --bg:#FAFAF8; --ink:#1A1A1A; --sub:#6B7280; --line:#E5E7EB;
+    --blue:#2563EB; --red:#DC2626; --ok:#059669; --okbg:#ECFDF5; --nobg:#FEF2F2;
+    --panel:#FFFFFF;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  /* 입력칸을 누르면(포커스) 회색 안내 글자가 사라지도록 */
+  input:focus::placeholder{ color:transparent; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Pretendard',system-ui,sans-serif; font-size:16px; line-height:1.5;
+  }
+  /* 수식만 이탤릭 세리프 */
+  .eq{font-family:'Noto Serif KR',serif; font-style:italic; font-weight:700; letter-spacing:.01em;}
+  .eq .op{font-style:normal; font-weight:500; margin:0 .18em; color:var(--sub);}
+
+  header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 22px; border-bottom:1px solid var(--line); background:var(--panel);
+    position:sticky; top:0; z-index:50;
+  }
+  header h1{font-size:17px; font-weight:700; margin:0;}
+  header .meta{font-size:13px; color:var(--sub); display:flex; align-items:center; gap:12px;}
+  #qrThumb{
+    display:flex; align-items:center; gap:8px; cursor:pointer;
+    background:#fff; border:1px solid var(--line); border-radius:8px; padding:5px 9px 5px 5px;
+    transition:border-color .15s;
+  }
+  #qrThumb:hover{border-color:var(--ink);}
+  #qrThumb #qrSmall{width:38px; height:38px; display:flex; align-items:center; justify-content:center;}
+  #qrThumb #qrSmall img, #qrThumb #qrSmall canvas{width:38px !important; height:38px !important; display:block;}
+  #qrThumb .qr-caption{font-size:12.5px; font-weight:600; color:var(--ink); white-space:nowrap;}
+  @media(max-width:520px){ #qrThumb .qr-caption{display:none;} }
+  .dot{width:7px; height:7px; border-radius:50%; background:#CBD5E1;}
+  .dot.on{background:var(--ok);}
+
+  .wrap{max-width:960px; margin:0 auto; padding:24px 20px 80px;}
+
+  /* 탭 */
+  .tabs{display:flex; gap:4px; margin-bottom:20px; border-bottom:1px solid var(--line);}
+  .tab{
+    padding:10px 18px; font-size:15px; font-weight:600; color:var(--sub);
+    background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; margin-bottom:-1px;
+  }
+  .tab.active{color:var(--ink); border-bottom-color:var(--ink);}
+
+  .toolbar{display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .tools{display:flex; gap:2px; background:#F1F1EE; padding:3px; border-radius:8px;}
+  .tools button{
+    padding:7px 13px; font-size:14px; font-weight:600; color:var(--sub);
+    background:none; border:none; border-radius:6px; cursor:pointer; font-family:inherit;
+  }
+  .tools button.active{background:var(--panel); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.06);}
+  .tools button.era.active{color:var(--red);}
+
+  .colors{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .swatch{width:20px; height:20px; border-radius:50%; cursor:pointer; border:2px solid var(--panel); box-shadow:0 0 0 1px var(--line);}
+  .swatch.active{box-shadow:0 0 0 2px var(--ink);}
+  .clear{font-size:13px; color:var(--sub); background:none; border:none; cursor:pointer; text-decoration:underline; font-family:inherit;}
+
+  /* 미션 선택 */
+  .mission-bar{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;}
+  .mission-bar button{
+    padding:8px 14px; font-size:14px; font-weight:600; color:var(--sub);
+    background:var(--panel); border:1px solid var(--line); border-radius:20px; cursor:pointer; font-family:inherit;
+  }
+  .mission-bar button.active{color:var(--ink); border-color:var(--ink); background:#F8F8F6;}
+  .prompt{
+    background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--ink);
+    border-radius:8px; padding:16px 18px; margin-bottom:16px;
+  }
+  .prompt .label{font-size:12px; font-weight:700; color:var(--sub); letter-spacing:.08em; text-transform:uppercase; margin-bottom:6px;}
+  .prompt .body{font-size:18px;}
+  .prompt .goals{margin-top:10px; font-size:14px; color:var(--sub);}
+  .prompt .goals .eq{font-size:16px;}
+  .goals .katex{color:inherit;}
+
+  /* 연립방정식 입력 패널 */
+  .eq-input{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;}
+  .eq-input-head{font-size:14px; font-weight:700; color:var(--sub); margin-bottom:14px;}
+  .eq-rows{display:flex; flex-direction:column; gap:12px;}
+  .eq-row{display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+  .eq-row .eq-dot{width:12px; height:12px; border-radius:50%; flex-shrink:0; margin-right:4px;}
+  .eq-row input{
+    width:56px; text-align:center; padding:9px 6px; border:1px solid var(--line); border-radius:8px;
+    font-family:'KaTeX_Math','Noto Serif KR',serif; font-style:italic; font-weight:700; font-size:17px; outline:none;
+  }
+  .eq-row input:focus{border-color:var(--ink);}
+  .eq-row .ktx{display:inline-flex; align-items:center; min-height:24px; margin:0 2px;}
+  .eq-row .ktx .katex{font-size:1.15em;}
+  .eq-preview{margin-top:16px; padding:14px 16px; background:#F8F8F6; border:1px solid var(--line); border-radius:10px; display:none;}
+  .eq-preview.show{display:block;}
+  .eq-preview .cap{font-size:12.5px; font-weight:700; color:var(--sub); margin-bottom:8px;}
+  .eq-preview .sys .katex{font-size:1.3em;}
+  .eq-preview .sys .katex-display{margin:0; text-align:left;}
+  .eq-actions{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+  .btn-draw{
+    padding:11px 22px; font-size:15px; font-weight:700; color:#fff; background:var(--ink);
+    border:none; border-radius:8px; cursor:pointer; font-family:inherit;
+  }
+  .btn-ghost{
+    padding:11px 18px; font-size:14px; font-weight:600; color:var(--sub); background:none;
+    border:1px solid var(--line); border-radius:8px; cursor:pointer; font-family:inherit;
+  }
+  .eq-result{margin-top:16px; font-size:16px; min-height:24px;}
+  .eq-result .rtag{font-weight:700;}
+  .eq-result.ok{color:var(--ink);}
+  .eq-result.none{color:var(--red);}
+  .eq-result.inf{color:var(--ok);}
+  .sys-eq{margin-top:12px;}
+  .sys-eq .katex{font-size:1.35em;}
+  .sys-eq .katex-display{margin:0; text-align:left;}
+
+  /* 그래프 + 패널 레이아웃 */
+  .stage{display:grid; grid-template-columns:1fr 300px; gap:18px; align-items:start;}
+  @media(max-width:760px){ .stage{grid-template-columns:1fr;} }
+
+  .canvas-box{position:relative; width:100%; aspect-ratio:1/1; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; touch-action:none;}
+  .sketch-tools{position:absolute; left:50%; bottom:14px; transform:translateX(-50%); display:none; align-items:center; gap:12px; background:rgba(255,255,255,.95); border:1px solid var(--line); border-radius:24px; padding:7px 14px; box-shadow:0 4px 12px rgba(0,0,0,.1);}
+  .sketch-tools.show{display:flex;}
+  .sk-colors{display:flex; gap:8px;}
+  .sk-dot{width:22px; height:22px; border-radius:50%; cursor:pointer; border:2px solid #fff; box-shadow:0 0 0 1px var(--line);}
+  .sk-dot.active{box-shadow:0 0 0 2px var(--ink);}
+  .sk-btn{font-family:inherit; font-size:14px; font-weight:600; color:var(--sub); background:none; border:none; cursor:pointer; padding:4px 8px; border-radius:6px;}
+  .sk-btn.active{color:var(--red); background:#FEF2F2;}
+  canvas{display:block; width:100%; height:100%; cursor:crosshair;}
+  .coord{position:absolute; left:12px; top:12px; font-size:13px; color:var(--sub); background:rgba(255,255,255,.85); padding:3px 9px; border-radius:6px; border:1px solid var(--line);}
+  .zoombar{position:absolute; right:12px; bottom:12px; display:flex; gap:2px; background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden;}
+  .zoombar button{width:34px; height:32px; border:none; background:none; font-size:16px; color:var(--ink); cursor:pointer;}
+  .zoombar button:hover{background:#F1F1EE;}
+  .zoombar .mid{border-left:1px solid var(--line); border-right:1px solid var(--line);}
+
+  /* 대입 확인 패널 */
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; min-height:200px;}
+  .panel h3{margin:0 0 4px; font-size:13px; font-weight:700; color:var(--sub); letter-spacing:.04em;}
+  .cross-pt{font-size:22px; margin:6px 0 16px;}
+  .cross-pt .eq{font-size:22px;}
+  .check{border-top:1px solid var(--line); padding-top:14px; margin-top:4px;}
+  .check .cap{font-size:13px; color:var(--sub); margin-bottom:10px;}
+  .subst{margin-bottom:14px;}
+  .subst .name{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; vertical-align:middle;}
+  .subst .formula{font-size:15px; margin:3px 0;}
+  .subst .step{color:var(--sub); font-size:14px; padding-left:15px;}
+  .subst .res{font-weight:700; padding-left:15px; font-size:14px;}
+  .subst .res.yes{color:var(--ok);} .subst .res.no{color:var(--red);}
+  .verdict{margin-top:14px; padding:12px 14px; border-radius:8px; font-size:14.5px; font-weight:600;}
+  .verdict.yes{background:var(--okbg); color:var(--ok);}
+  .verdict.no{background:var(--nobg); color:var(--red);}
+  .verdict.wait{background:#F1F1EE; color:var(--sub); font-weight:500;}
+
+  .hint{font-size:13px; color:var(--sub); margin-top:14px; line-height:1.6;}
+  .teacher-only{display:none;}
+
+  /* 제출 폼 */
+  .submit-fields{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; margin-top:16px;}
+  .submit-fields .row{display:flex; gap:10px; margin-bottom:12px;}
+  .submit-fields select, .submit-fields input{
+    flex:1; padding:11px 13px; font-size:15px; border:1px solid var(--line); border-radius:8px;
+    font-family:inherit; outline:none; background:#fff; color:var(--ink); min-width:0;
+  }
+  .submit-fields select:focus, .submit-fields input:focus{border-color:var(--ink);}
+  .ans-row{display:flex; gap:10px; align-items:center;}
+  .ans-row label{font-size:15px; font-weight:600; color:var(--sub);}
+  .ans-row .eq{font-size:16px; margin-right:2px;}
+  .btn-primary{
+    width:100%; padding:13px; font-size:16px; font-weight:700; color:#fff; background:var(--ink);
+    border:none; border-radius:8px; cursor:pointer; font-family:inherit; margin-top:4px;
+  }
+  .btn-primary:disabled{opacity:.5; cursor:default;}
+  .note{font-size:12.5px; color:var(--sub); text-align:center; margin-top:8px;}
+
+  /* 내 제출 목록 & 대시보드 카드 */
+  .records{margin-top:32px;}
+  .records h2{font-size:16px; font-weight:700; margin:0 0 14px;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px;}
+  .rec{background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .rec .top{display:flex; justify-content:space-between; align-items:center; padding:9px 12px; border-bottom:1px solid var(--line); font-size:13.5px; font-weight:600;}
+  .rec img{width:100%; display:block; background:#fff; cursor:pointer;}
+  .rec .bot{padding:9px 12px; font-size:13.5px; text-align:center; color:var(--sub);}
+  .rec .bot b{color:var(--ink);}
+  .tag{font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:10px;}
+  .tag.ok{background:var(--okbg); color:var(--ok);}
+  .tag.no{background:var(--nobg); color:var(--red);}
+  .del{font-size:12px; color:#9CA3AF; background:none; border:none; cursor:pointer; margin-left:6px;}
+
+  /* 대시보드 필터 */
+  .dash-head{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px;}
+  .dash-head h2{font-size:18px; margin:0;}
+  .filters{display:flex; gap:8px;}
+  .filters select{padding:8px 11px; font-size:14px; border:1px solid var(--line); border-radius:8px; font-family:inherit; background:#fff;}
+  .dash-section{margin-bottom:28px;}
+  .dash-section-title{font-size:16px; font-weight:700; color:var(--ink); margin-bottom:12px; padding-bottom:8px; border-bottom:2px solid var(--line); display:flex; align-items:center; gap:10px;}
+  .dash-section-title .cnt{font-size:13px; font-weight:600; color:var(--sub);}
+
+  /* 모달 */
+  .modal{display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; justify-content:center; align-items:center; padding:20px;}
+  .modal.open{display:flex;}
+  .modal-card{background:#fff; border-radius:14px; padding:20px; width:100%; max-width:640px;}
+  .modal-card .mhead{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .modal-card h3{margin:0; font-size:17px;}
+  .modal-card .x{font-size:22px; color:var(--sub); background:none; border:none; cursor:pointer;}
+  .modal-card .minfo{font-size:14px; color:var(--sub); margin-bottom:12px;}
+  .modal-card img{width:100%; border:1px solid var(--line); border-radius:10px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>두 그래프의 교점 탐구</h1>
+  <div class="meta">
+    <div id="qrThumb" onclick="openQrModal()" style="display:none;" title="눌러서 QR 크게 보기">
+      <div id="qrSmall"></div>
+      <span class="qr-caption">학생 접속</span>
+    </div>
+    <span class="dot" id="dot"></span><span id="statusTxt">연결 중</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="tabs">
+    <button class="tab active" id="tabFree" onclick="switchTab('free')">자유 탐구</button>
+    <button class="tab" id="tabMission" onclick="switchTab('mission')">미션</button>
+    <button class="tab" id="tabSubmit" onclick="switchTab('submit')">답안 제출</button>
+  </div>
+
+  <!-- 미션 선택 바 (미션 탭에서만) -->
+  <div class="mission-bar" id="missionBar" style="display:none;"></div>
+
+  <!-- 안내 프롬프트 -->
+  <div class="prompt" id="prompt">
+    <div class="label">자유 탐구</div>
+    <div class="body">좌표평면에 <b>두 직선</b>을 그려 보세요. 두 직선이 만나면, 그 교점을 각 직선의 식에 넣었을 때 등식이 성립하는지 오른쪽에서 확인할 수 있어요.</div>
+  </div>
+
+  <!-- 연립방정식 입력 (자유 탐구 탭에서만) -->
+  <div class="eq-input" id="eqInput">
+    <div class="eq-input-head">연립방정식을 세워 보세요 — 계수를 넣고 그래프로 그려 봐요</div>
+    <div class="eq-rows">
+      <div class="eq-row">
+        <span class="eq-dot" style="background:#DC2626"></span>
+        <input type="text" id="a1" placeholder="a" inputmode="text" oninput="updateEqPreview()"><span class="ktx" id="kx1"></span>
+        <span class="ktx" id="kp1"></span>
+        <input type="text" id="b1" placeholder="b" inputmode="text" oninput="updateEqPreview()"><span class="ktx" id="ky1"></span>
+        <span class="ktx" id="ke1"></span>
+        <input type="text" id="c1" placeholder="c" inputmode="text" oninput="updateEqPreview()">
+      </div>
+      <div class="eq-row">
+        <span class="eq-dot" style="background:#2563EB"></span>
+        <input type="text" id="a2" placeholder="a" inputmode="text" oninput="updateEqPreview()"><span class="ktx" id="kx2"></span>
+        <span class="ktx" id="kp2"></span>
+        <input type="text" id="b2" placeholder="b" inputmode="text" oninput="updateEqPreview()"><span class="ktx" id="ky2"></span>
+        <span class="ktx" id="ke2"></span>
+        <input type="text" id="c2" placeholder="c" inputmode="text" oninput="updateEqPreview()">
+      </div>
+    </div>
+    <div class="eq-preview" id="eqPreview"></div>
+    <div class="eq-actions">
+      <button class="btn-draw" onclick="drawFromEquations()">그래프로 그리기</button>
+      <button class="btn-ghost" onclick="clearEquationLines()">식 직선 지우기</button>
+    </div>
+    <div class="eq-result" id="eqResult"></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tools">
+      <button id="mMove" class="active" onclick="setMode('move')">이동</button>
+      <button id="mPoint" onclick="setMode('point')">점 찍기</button>
+      <button id="mLine" onclick="setMode('line')">직선 잇기</button>
+      <button id="mEraser" class="era" onclick="setMode('eraser')">지우개</button>
+    </div>
+    <div class="colors">
+      <div class="swatch active" style="background:#DC2626" onclick="setColor('#DC2626',this)"></div>
+      <div class="swatch" style="background:#2563EB" onclick="setColor('#2563EB',this)"></div>
+      <div class="swatch" style="background:#059669" onclick="setColor('#059669',this)"></div>
+      <div class="swatch" style="background:#EA580C" onclick="setColor('#EA580C',this)"></div>
+      <div class="swatch" style="background:#7C3AED" onclick="setColor('#7C3AED',this)"></div>
+      <div class="swatch" style="background:#111827" onclick="setColor('#111827',this)"></div>
+      <button class="clear" onclick="clearAll()">전체 지우기</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="canvas-box" id="cbox">
+      <canvas id="cv"></canvas>
+      <div class="coord" id="coord">(0, 0)</div>
+      <div class="zoombar">
+        <button onclick="zoomBy(1.25)">+</button>
+        <button class="mid" onclick="resetView()">⟳</button>
+        <button onclick="zoomBy(0.8)">−</button>
+      </div>
+      <div class="sketch-tools" id="sketchTools">
+        <div class="sk-colors">
+          <div class="sk-dot active" style="background:#1A1A1A" onclick="setPenColor('#1A1A1A',this)"></div>
+          <div class="sk-dot" style="background:#DC2626" onclick="setPenColor('#DC2626',this)"></div>
+          <div class="sk-dot" style="background:#2563EB" onclick="setPenColor('#2563EB',this)"></div>
+        </div>
+        <button class="sk-btn" id="skEraser" onclick="toggleEraser()">지우개</button>
+        <button class="sk-btn" onclick="clearSketch()">전체 지우기</button>
+      </div>
+    </div>
+
+    <div class="panel" id="panel">
+      <h3>교점 확인</h3>
+      <div class="verdict wait" id="verdict">두 직선을 그리면 교점이 여기에 표시됩니다.</div>
+      <div id="checkArea"></div>
+      <div class="hint" id="hint">💡 점 찍기로 점을 2개 이상 찍고, ‘직선 잇기’로 두 점을 이어 직선을 만들어요.</div>
+    </div>
+  </div>
+
+  <!-- 제출 폼 (제출 탭에서만) -->
+  <div class="submit-fields" id="submitFields" style="display:none;">
+    <div class="row">
+      <select id="stuClass">
+        <option value="">반 선택</option>
+        <option value="교사">교사(시연)</option>
+        <option value="5">5반</option><option value="6">6반</option><option value="7">7반</option><option value="8">8반</option>
+      </select>
+      <input type="text" id="stuName" placeholder="이름">
+    </div>
+    <div class="ans-row" style="margin-bottom:14px;">
+      <label>교점의 좌표</label>
+      <span id="labelX"></span>
+      <input type="text" id="ansX" placeholder="?" style="max-width:90px; text-align:center; padding:11px; border:1px solid var(--line); border-radius:8px; font-family:'Pretendard',system-ui,sans-serif; font-weight:600; font-size:17px;">
+      <span id="labelY"></span>
+      <input type="text" id="ansY" placeholder="?" style="max-width:90px; text-align:center; padding:11px; border:1px solid var(--line); border-radius:8px; font-family:'Pretendard',system-ui,sans-serif; font-weight:600; font-size:17px;">
+    </div>
+    <button class="btn-primary" id="submitBtn" onclick="submitAnswer()">그래프와 답안 제출하기</button>
+    <div class="note">해가 없으면 x칸에 “없음”, 무수히 많으면 “무수히”라고 적어도 돼요.</div>
+  </div>
+
+  <!-- 내가 제출한 목록 (학생, 제출 탭에서만) -->
+  <div class="records" id="myRecords" style="display:none;">
+    <h2>내가 제출한 풀이</h2>
+    <div class="grid" id="myGrid"><p style="color:var(--sub); font-size:14px;">아직 제출한 풀이가 없어요.</p></div>
+  </div>
+
+  <!-- 교사 전용 대시보드 -->
+  <div class="teacher-only" id="teacherBox" style="margin-top:40px; padding-top:28px; border-top:1px solid var(--line);">
+    <div class="dash-head">
+      <h2>전체 제출 현황</h2>
+      <div class="filters">
+        <select id="fClass" onchange="renderDash()">
+          <option value="all">모든 반</option>
+          <option value="교사">교사 시연</option>
+          <option value="5">5반</option><option value="6">6반</option><option value="7">7반</option><option value="8">8반</option>
+        </select>
+        <select id="fMission" onchange="renderDash()">
+          <option value="all">모든 문제</option>
+        </select>
+        <button class="btn-ghost" onclick="refreshDash()" style="padding:8px 14px;">↻ 새로고침</button>
+      </div>
+    </div>
+    <div id="dashGrid"></div>
+  </div>
+</div>
+
+<!-- 학생 접속 QR 팝업 -->
+<div class="modal" id="qrModal" onclick="closeQrModal()">
+  <div class="modal-card" onclick="event.stopPropagation()" style="max-width:400px; text-align:center;">
+    <div class="mhead" style="justify-content:flex-end;">
+      <button class="x" onclick="closeQrModal()">✕</button>
+    </div>
+    <div id="qrBig" style="display:inline-block;"></div>
+    <p style="font-size:15px; font-weight:600; margin:16px 0 4px;">휴대폰·태블릿으로 QR을 찍어 접속하세요</p>
+    <p id="qrUrl" style="font-size:12.5px; color:var(--sub); word-break:break-all;"></p>
+  </div>
+</div>
+
+<!-- 풀이 확대 모달 -->
+<div class="modal" id="inspectModal" onclick="closeInspect()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="mhead">
+      <h3>학생 풀이 확인</h3>
+      <button class="x" onclick="closeInspect()">✕</button>
+    </div>
+    <div class="minfo" id="inspectInfo"></div>
+    <img id="inspectImg" src="" alt="학생 풀이">
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  // Firebase는 연결 상태 표시 용도로만 (제출 없음). 없어도 탐구 활동은 정상 작동.
+  const isTeacher = new URLSearchParams(location.search).get('teacher')==='true';
+  let database = null;
+  try {
+    if(typeof firebase !== 'undefined'){
+      const firebaseConfig = { databaseURL:"https://gugal-math-default-rtdb.firebaseio.com/" };
+      if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      database = firebase.database();
+    }
+  } catch(e){ console.warn('Firebase 미연결 — 탐구 활동은 정상 작동합니다.', e); }
+
+  // ===== 미션 데이터 (목표식 제시형, 깔끔한 정수 교점) =====
+  const missions = {
+    m1:{ title:'한 점에서 만나는 두 직선',
+      desc:'다음 두 직선을 그려 보세요. 두 직선은 한 점에서 만납니다.',
+      goals:[{tex:'y = x + 1', a:1, b:1, color:'#DC2626'},{tex:'y = -x + 5', a:-1, b:5, color:'#2563EB'}] },
+    m2:{ title:'평행한 두 직선',
+      desc:'연립방정식 x − y = −3, 3x − 3y = 6 을 각각 y = 꼴로 고쳐 그려 보세요. 두 직선은 만날까요?',
+      goals:[{tex:'y = x + 3', a:1, b:3, color:'#DC2626'},{tex:'y = x - 2', a:1, b:-2, color:'#2563EB'}] },
+    m3:{ title:'일치하는 두 직선',
+      desc:'연립방정식 2x − y = 2, 4x − 2y = 4 를 각각 y = 꼴로 고쳐 그려 보세요. 어떻게 될까요?',
+      goals:[{tex:'y = 2x - 2', a:2, b:-2, color:'#DC2626'},{tex:'y = 2x - 2', a:2, b:-2, color:'#2563EB'}] },
+  };
+
+  // ===== 제출용 문제 (교과서 4.7) =====
+  const DB_PATH='math_results/crossing'; // 예전 활동과 같은 math_results 규칙 사용
+  const subProblems = {
+    p1_1:{ label:'문제 1-(1)', intro:'오른쪽 그래프를 이용하여 다음 연립방정식을 푸시오.', tex:'\\begin{cases} x - 2y = -4 \\\\ 2x + 3y = -1 \\end{cases}', answer:{type:'point',x:-2,y:1},
+      preset:[ {a:0.5, b:2, color:'#DB2777', eq:'x - 2y = -4'}, {a:-2/3, b:-1/3, color:'#0D9488', eq:'2x + 3y = -1'}, {a:4, b:-5, color:'#7C3AED', eq:'4x - y = 5'} ] },
+    p1_2:{ label:'문제 1-(2)', intro:'오른쪽 그래프를 이용하여 다음 연립방정식을 푸시오.', tex:'\\begin{cases} 2x + 3y = -1 \\\\ 4x - y = 5 \\end{cases}', answer:{type:'point',x:1,y:-1},
+      preset:[ {a:0.5, b:2, color:'#DB2777', eq:'x - 2y = -4'}, {a:-2/3, b:-1/3, color:'#0D9488', eq:'2x + 3y = -1'}, {a:4, b:-5, color:'#7C3AED', eq:'4x - y = 5'} ] },
+    p2_1:{ label:'문제 2-(1)', intro:'두 일차방정식의 그래프의 교점의 좌표를 구하시오. (아래 노트에 풀이 과정을 적어 보세요)', tex:'\\begin{cases} 2x - y = 0 \\\\ y = x + 2 \\end{cases}', answer:{type:'point',x:2,y:4}, sketch:true },
+    p2_2:{ label:'문제 2-(2)', intro:'두 일차방정식의 그래프의 교점의 좌표를 구하시오. (아래 노트에 풀이 과정을 적어 보세요)', tex:'\\begin{cases} 3x + 2y = -3 \\\\ 4x - 2y = 10 \\end{cases}', answer:{type:'point',x:1,y:-3}, sketch:true },
+    p3_1:{ label:'문제 3-(1)', intro:'연립방정식의 해를 그래프로 구하시오.', tex:'\\begin{cases} 2x + y = -1 \\\\ 6x + 3y = -3 \\end{cases}', answer:{type:'infinite'} },
+    p3_2:{ label:'문제 3-(2)', intro:'연립방정식의 해를 그래프로 구하시오.', tex:'\\begin{cases} 2x - 2y = 4 \\\\ 3x - 3y = 9 \\end{cases}', answer:{type:'none'} },
+  };
+  let activeSub=null;
+
+  // ===== 상태 =====
+  let tab='free', activeMission=null;
+  let points=[], lines=[], selForLine=[];
+  let mode='move', color='#DC2626';
+  let zoom=35, offX=0, offY=0;
+  let sketchMode=false;        // 스케치북(빈 노트) 모드 여부
+  let presetMode=false;        // 그래프가 미리 그려진 '읽기' 모드 (문제1)
+  let foundPoints=[];          // 읽기 모드에서 학생이 찾은 교점들
+  let strokes=[];              // 자유 필기 획들: [{color, pts:[{x,y}...]}]
+  let curStroke=null;          // 현재 그리는 중인 획
+
+  const cv=document.getElementById('cv'), ctx=cv.getContext('2d'), box=document.getElementById('cbox');
+
+  window.onload=()=>{
+    resize(); resetView(); initTeacher(); renderMissionBar();
+    const lx=document.getElementById('labelX'), ly=document.getElementById('labelY');
+    if(lx) lx.innerHTML=renderTex('x =','x =',true);
+    if(ly) ly.innerHTML=renderTex('y =','y =',true);
+    renderEqLabels();
+    switchTab('free'); // 초기 프롬프트 + 식 입력 패널 세팅
+  };
+  window.addEventListener('resize', resize);
+
+  function resize(){ cv.width=box.clientWidth; cv.height=box.clientHeight; draw(); }
+  function resetView(){ zoom=35; offX=cv.width/2; offY=cv.height/2; draw(); }
+
+  // 학생이 그린 점·직선이 모두 화면에 들어오도록 뷰(줌·위치) 자동 조정
+  function fitViewToContent(){
+    const pts=[];
+    points.forEach(p=>pts.push(p));
+    lines.forEach(l=>{ pts.push(l.p1); pts.push(l.p2); });
+    // 두 직선이 있으면 교점도 범위에 포함 (교점이 화면 밖으로 벗어나지 않도록)
+    const ix=computeIntersection();
+    if(ix && ix.type==='point') pts.push({x:ix.x, y:ix.y});
+    if(pts.length===0){ resetView(); return; }
+    // 원점(0,0)도 항상 포함해 좌표축 감각 유지
+    pts.push({x:0,y:0});
+    let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+    pts.forEach(p=>{ minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x); minY=Math.min(minY,p.y); maxY=Math.max(maxY,p.y); });
+    const padU=1.5;
+    minX-=padU; maxX+=padU; minY-=padU; maxY+=padU;
+    const spanX=Math.max(maxX-minX, 2);
+    const spanY=Math.max(maxY-minY, 2);
+    const zx=cv.width/spanX, zy=cv.height/spanY;
+    zoom=Math.max(8, Math.min(200, Math.min(zx, zy)));
+    const cxU=(minX+maxX)/2, cyU=(minY+maxY)/2;
+    offX=cv.width/2 - cxU*zoom;
+    offY=cv.height/2 + cyU*zoom;
+    draw();
+  }
+  function zoomBy(f){
+    const o=zoom; zoom=Math.max(15,Math.min(200,zoom*f));
+    offX=cv.width/2-(cv.width/2-offX)*(zoom/o);
+    offY=cv.height/2-(cv.height/2-offY)*(zoom/o);
+    draw();
+  }
+
+  function initTeacher(){
+    if(isTeacher){
+      document.getElementById('teacherBox').style.display='block';
+      document.getElementById('qrThumb').style.display='flex';
+      // 학생용 주소 (교사 파라미터 제거)
+      const url=location.origin+location.pathname;
+      document.getElementById('qrUrl').textContent=url;
+      if(typeof QRCode !== 'undefined'){
+        new QRCode(document.getElementById('qrSmall'),{text:url,width:38,height:38,colorDark:'#1A1A1A'});
+        new QRCode(document.getElementById('qrBig'),{text:url,width:260,height:260,colorDark:'#1A1A1A'});
+      }
+      fillMissionFilter();
+      if(database){
+        database.ref(DB_PATH).on('value', snap=>{
+          window.allData=[]; snap.forEach(c=>{ window.allData.push({id:c.key, ...c.val()}); });
+          window.allData.sort((a,b)=>b.time-a.time);
+          renderDash();
+        }, err=>{ console.warn('대시보드 구독 오류:', err); });
+      }
+    } else {
+      if(database){
+        database.ref(DB_PATH).on('value', snap=>{
+          const keys=myKeys(); const mine=[];
+          snap.forEach(c=>{ if(keys.includes(c.key)) mine.push({id:c.key, ...c.val()}); });
+          mine.sort((a,b)=>b.time-a.time);
+          renderMy(mine);
+        });
+      }
+    }
+  }
+  if(database){
+    database.ref('.info/connected').on('value',s=>{
+      document.getElementById('dot').className = s.val()?'dot on':'dot';
+      document.getElementById('statusTxt').innerText = s.val()?(isTeacher?'교사 모드':'연결됨'):'오프라인';
+    });
+  } else {
+    document.getElementById('statusTxt').innerText = '오프라인 모드';
+  }
+
+  // ===== 식 입력 → 그래프 =====
+  // 분수/소수/정수 파싱 ("1/2", "-3", "2.5")
+  function parseCoef(s){
+    s=(s||'').toString().trim().replace(/\s/g,'').replace(/−/g,'-');
+    if(s==='') return null;
+    if(s.includes('/')){
+      const [n,d]=s.split('/');
+      const nn=parseFloat(n), dd=parseFloat(d);
+      if(isNaN(nn)||isNaN(dd)||dd===0) return NaN;
+      return nn/dd;
+    }
+    const v=parseFloat(s);
+    return isNaN(v)?NaN:v;
+  }
+
+  // ax+by=c 에서 직선 위 두 점 구하기 (b=0이면 수직선)
+  function lineFromCoef(a,b,c){
+    if(a===0 && b===0) return null; // 식이 아님
+    if(b===0){ // ax=c → x=c/a (수직선)
+      const x=c/a; return {p1:{x, y:0}, p2:{x, y:1}};
+    }
+    // y=(c-ax)/b : x=0, x=4 두 점
+    const y0=(c-a*0)/b, y4=(c-a*4)/b;
+    return {p1:{x:0, y:y0}, p2:{x:4, y:y4}};
+  }
+
+  // 두 식(ax+by=c)의 교점 판정
+  function solveSystem(a1,b1,c1,a2,b2,c2){
+    const det=a1*b2-a2*b1;
+    if(Math.abs(det)<1e-9){
+      // 평행 or 일치: 비율 비교
+      // a1:b1:c1 == a2:b2:c2 이면 일치
+      const cross1=a1*c2-a2*c1, cross2=b1*c2-b2*c1;
+      if(Math.abs(cross1)<1e-9 && Math.abs(cross2)<1e-9) return {type:'infinite'};
+      return {type:'none'};
+    }
+    const x=(c1*b2-c2*b1)/det;
+    const y=(a1*c2-a2*c1)/det;
+    return {type:'point', x:round2(x), y:round2(y)};
+  }
+
+  let eqLines=[]; // 식으로 그린 직선(빨강/파랑)만 별도 관리해 지우기 편하게
+
+  // 입력 영역의 x, y, +, = 를 KaTeX로 렌더 (한 번만)
+  function renderEqLabels(){
+    const map={ kx1:'x', ky1:'y', kp1:'+', ke1:'=', kx2:'x', ky2:'y', kp2:'+', ke2:'=' };
+    Object.entries(map).forEach(([id,tex])=>{
+      const el=document.getElementById(id);
+      if(el) el.innerHTML=renderTex(tex, tex, true);
+    });
+  }
+
+  // 계수 → 항 문자열 (KaTeX). 예: 2,x → "2x", 1,x → "x", -1,x → "-x", 0,x → ""
+  function termTex(coefStr, varName){
+    const v=parseCoef(coefStr);
+    if(v===null || isNaN(v) || v===0) return {tex:'', val:v};
+    if(v===1) return {tex:varName, val:v};
+    if(v===-1) return {tex:'-'+varName, val:v};
+    return {tex:coefStr.trim().replace(/−/g,'-')+varName, val:v};
+  }
+
+  // 한 방정식의 KaTeX 문자열 조립 (ax+by=c)
+  function eqTex(aStr,bStr,cStr){
+    const ax=termTex(aStr,'x'), by=termTex(bStr,'y');
+    const c=parseCoef(cStr);
+    let left='';
+    if(ax.tex){ left+=ax.tex; }
+    if(by.tex){
+      if(left==='') left+=by.tex;
+      else left += (by.val<0? ' - '+by.tex.replace('-','') : ' + '+by.tex);
+    }
+    if(left==='') left='0';
+    const cShown=(c===null||isNaN(c))?'\\;?\\;':(cStr.trim().replace(/−/g,'-'));
+    return `${left} = ${cShown}`;
+  }
+
+  // 실시간 미리보기: 학생이 세운 연립방정식을 중괄호로
+  function updateEqPreview(){
+    const prev=document.getElementById('eqPreview');
+    const ids=['a1','b1','c1','a2','b2','c2'].map(id=>document.getElementById(id).value);
+    const anyInput = ids.some(v=>v.trim()!=='');
+    if(!anyInput){ prev.className='eq-preview'; prev.innerHTML=''; return; }
+    const e1=eqTex(ids[0],ids[1],ids[2]);
+    const e2=eqTex(ids[3],ids[4],ids[5]);
+    const sysTex=`\\begin{cases} ${e1} \\\\ ${e2} \\end{cases}`;
+    prev.className='eq-preview show';
+    prev.innerHTML=`<div class="cap">내가 세운 연립방정식</div><div class="sys">${renderTex(sysTex, sysTex, false)}</div>`;
+  }
+
+  function drawFromEquations(){
+    const a1=parseCoef(document.getElementById('a1').value);
+    const b1=parseCoef(document.getElementById('b1').value);
+    const c1=parseCoef(document.getElementById('c1').value);
+    const a2=parseCoef(document.getElementById('a2').value);
+    const b2=parseCoef(document.getElementById('b2').value);
+    const c2=parseCoef(document.getElementById('c2').value);
+    const res=document.getElementById('eqResult');
+
+    const vals=[a1,b1,c1,a2,b2,c2];
+    if(vals.some(v=>v===null)){ res.className='eq-result none'; res.textContent='모든 칸을 채워 주세요. (계수가 0이면 0을 넣어요)'; return; }
+    if(vals.some(v=>isNaN(v))){ res.className='eq-result none'; res.textContent='숫자로 입력해 주세요. 분수는 1/2 처럼 쓸 수 있어요.'; return; }
+    if(a1===0&&b1===0){ res.className='eq-result none'; res.textContent='①번 식의 x, y 계수가 모두 0이면 직선이 아니에요.'; return; }
+    if(a2===0&&b2===0){ res.className='eq-result none'; res.textContent='②번 식의 x, y 계수가 모두 0이면 직선이 아니에요.'; return; }
+
+    // 기존 식 직선 제거 후 새로 추가
+    lines=lines.filter(l=>!l.fromEq);
+    const L1=lineFromCoef(a1,b1,c1), L2=lineFromCoef(a2,b2,c2);
+    eqLines=[
+      {p1:L1.p1, p2:L1.p2, color:'#DC2626', fromEq:true},
+      {p1:L2.p1, p2:L2.p2, color:'#2563EB', fromEq:true},
+    ];
+    lines.push(...eqLines);
+
+    // 교점 판정
+    const s=solveSystem(a1,b1,c1,a2,b2,c2);
+    if(s.type==='point'){
+      res.className='eq-result ok';
+      res.innerHTML=`교점: <span class="rtag">${renderTex(`(${texNum(s.x)},\\ ${texNum(s.y)})`,`(${fmtNum(s.x)}, ${fmtNum(s.y)})`,true)}</span>`;
+    } else if(s.type==='none'){
+      res.className='eq-result none';
+      res.innerHTML='교점: <span class="rtag">없음 (두 직선이 평행)</span>';
+    } else {
+      res.className='eq-result inf';
+      res.innerHTML='교점: <span class="rtag">무수히 많음 (두 직선이 일치)</span>';
+    }
+    // 그래프가 교점을 담도록 뷰 맞춤
+    resetView();
+    draw();
+  }
+
+  function clearEquationLines(){
+    lines=lines.filter(l=>!l.fromEq);
+    eqLines=[];
+    document.getElementById('eqResult').textContent='';
+    document.getElementById('eqResult').className='eq-result';
+    draw();
+  }
+  // ===== 탭 =====
+  function switchTab(t){
+    tab=t;
+    ['Free','Mission','Submit'].forEach(x=>document.getElementById('tab'+x).classList.toggle('active', t===x.toLowerCase()));
+    document.getElementById('missionBar').style.display = (t==='mission'||t==='submit')?'flex':'none';
+    // 제출 탭에서만 보이는 요소들
+    const showSubmit = (t==='submit');
+    document.getElementById('submitFields').style.display = showSubmit?'block':'none';
+    document.getElementById('myRecords').style.display = (showSubmit && !isTeacher)?'block':'none';
+    // 식 입력은 자유 탐구 탭에서만
+    document.getElementById('eqInput').style.display = (t==='free')?'block':'none';
+    // 패널: 제출 탭에서는 대입 확인 대신 안내
+    clearAll(true);
+    if(t==='free'){
+      activeMission=null; activeSub=null;
+      sketchMode=false; presetMode=false; applySketchUI(); applyPresetUI();
+      clearEquationLines();
+      setPrompt('자유 탐구','연립방정식을 세우고 “그래프로 그리기”를 눌러 보세요.','');
+      renderMissionBar();
+    } else if(t==='mission'){
+      activeSub=null;
+      sketchMode=false; presetMode=false; applySketchUI(); applyPresetUI();
+      renderMissionBar();
+      selectMission(Object.keys(missions)[0]);
+    } else if(t==='submit'){
+      activeMission=null;
+      renderSubBar();
+      selectSub(Object.keys(subProblems)[0]);
+      refreshMyRecords(); // 제출 탭 진입 시 기존 제출 표시
+    }
+    update();
+  }
+
+  // 제출 문제 선택 바
+  function renderSubBar(){
+    const bar=document.getElementById('missionBar');
+    bar.innerHTML='';
+    Object.entries(subProblems).forEach(([id,pb])=>{
+      const b=document.createElement('button');
+      b.id='sb_'+id; b.textContent=pb.label;
+      b.onclick=()=>selectSub(id);
+      bar.appendChild(b);
+    });
+  }
+  // KaTeX 렌더 (로드 실패 시 텍스트 폴백)
+  function renderTex(tex, fallback, inline){
+    if(typeof katex !== 'undefined'){
+      try { return katex.renderToString(tex, {throwOnError:false, displayMode:!inline}); }
+      catch(e){ return fallback||tex; }
+    }
+    return fallback||tex;
+  }
+
+  function selectSub(id){
+    activeSub=id;
+    const pb=subProblems[id];
+    document.querySelectorAll('.mission-bar button').forEach(b=>b.classList.remove('active'));
+    const btn=document.getElementById('sb_'+id); if(btn) btn.classList.add('active');
+    const systemHtml = `<div class="sys-eq">${renderTex(pb.tex, pb.intro)}</div>`;
+    setPrompt(pb.label, pb.intro, systemHtml);
+    // 모드 전환
+    sketchMode = !!pb.sketch;
+    presetMode = !!pb.preset;
+    foundPoints = [];
+    strokes=[]; curStroke=null;
+    clearAll(true);
+    // 미리 그려진 그래프(문제1): 직선 두 개를 lines에 넣고 읽기 모드
+    if(presetMode){
+      pb.preset.forEach(g=>{
+        // y=ax+b 위의 두 점으로 직선 정의
+        const p1={x:0, y:g.b};
+        const p2={x:4, y:g.a*4+g.b};
+        lines.push({p1, p2, color:g.color, fromPreset:true});
+      });
+      resetView();
+    }
+    applySketchUI();
+    applyPresetUI();
+    document.getElementById('ansX').value=''; document.getElementById('ansY').value='';
+    update();
+  }
+
+  // 읽기 모드(문제1): 그리기 도구 숨기고, 교점 클릭 안내
+  function applyPresetUI(){
+    const toolbar=document.querySelector('.toolbar');
+    const panel=document.getElementById('panel');
+    if(presetMode){
+      if(toolbar) toolbar.style.display='none';   // 그리기 도구 숨김
+      if(panel){
+        panel.style.display='';
+        document.getElementById('verdict').className='verdict wait';
+        document.getElementById('verdict').innerHTML='두 직선의 <b>교점</b>을 눌러 좌표를 확인해 보세요.';
+        document.getElementById('checkArea').innerHTML=
+          '<button class="btn-ghost" style="margin-top:12px; width:100%;" onclick="clearFoundPoints()">찍은 교점 지우기</button>'+
+          '<div class="hint" style="display:block; margin-top:10px;">💡 교점을 누르면 좌표가 표시돼요. 잘못 찍었으면 그 점을 다시 누르거나 아래 버튼으로 지울 수 있어요.</div>';
+        document.getElementById('hint').style.display='none';
+      }
+      mode='readpoint'; // 교점 클릭 모드
+    } else {
+      // 읽기 모드가 아니면 도구 복원 (스케치 모드가 아닐 때만)
+      if(!sketchMode && toolbar) toolbar.style.display='';
+      if(mode==='readpoint') mode='move';
+    }
+  }
+
+  // 읽기 모드: 찍은 교점 모두 지우기
+  function clearFoundPoints(){
+    foundPoints=[];
+    const v=document.getElementById('verdict');
+    v.className='verdict wait';
+    v.innerHTML='두 직선의 <b>교점</b>을 눌러 좌표를 확인해 보세요.';
+    draw();
+  }
+
+  // 스케치 모드에 따라 UI(도구·패널·힌트) 조정
+  function applySketchUI(){
+    const toolbar=document.querySelector('.toolbar');
+    const panel=document.getElementById('panel');
+    const zoombar=document.querySelector('.zoombar');
+    const coord=document.getElementById('coord');
+    const skTools=document.getElementById('sketchTools');
+    if(sketchMode){
+      if(toolbar) toolbar.style.display='none';
+      if(panel) panel.style.display='none';
+      if(zoombar) zoombar.style.display='none';
+      if(coord) coord.style.display='none';
+      if(skTools) skTools.classList.add('show');
+      mode='pen'; penColor='#1A1A1A'; eraserOn=false;
+      // 색 선택 초기화
+      document.querySelectorAll('.sk-dot').forEach((d,i)=>d.classList.toggle('active', i===0));
+      const se=document.getElementById('skEraser'); if(se) se.classList.remove('active');
+    } else {
+      if(toolbar) toolbar.style.display='';
+      if(panel) panel.style.display='';
+      if(zoombar) zoombar.style.display='';
+      if(coord) coord.style.display='';
+      if(skTools) skTools.classList.remove('show');
+      if(mode==='pen') mode='move';
+    }
+  }
+
+  // ===== 스케치북(자유 필기) =====
+  let penColor='#1A1A1A', eraserOn=false;
+  function setPenColor(c, el){
+    penColor=c; eraserOn=false;
+    document.querySelectorAll('.sk-dot').forEach(d=>d.classList.remove('active'));
+    if(el) el.classList.add('active');
+    const se=document.getElementById('skEraser'); if(se) se.classList.remove('active');
+  }
+  function toggleEraser(){
+    eraserOn=!eraserOn;
+    document.getElementById('skEraser').classList.toggle('active', eraserOn);
+  }
+  function clearSketch(){
+    if(strokes.length && !confirm('필기한 내용을 모두 지울까요?')) return;
+    strokes=[]; curStroke=null; draw();
+  }
+
+  function renderMissionBar(){
+    const bar=document.getElementById('missionBar');
+    bar.innerHTML='';
+    Object.entries(missions).forEach(([id,m])=>{
+      const b=document.createElement('button');
+      b.id='mb_'+id; b.textContent=m.title;
+      b.onclick=()=>selectMission(id);
+      bar.appendChild(b);
+    });
+  }
+
+  function selectMission(id){
+    activeMission=id;
+    const m=missions[id];
+    document.querySelectorAll('.mission-bar button').forEach(b=>b.classList.remove('active'));
+    document.getElementById('mb_'+id).classList.add('active');
+    setPrompt(m.title, m.desc, '');
+    clearAll(true);
+    update();
+  }
+
+  function setPrompt(label, body, extra){
+    document.getElementById('prompt').innerHTML =
+      `<div class="label">${label}</div><div class="body">${body}</div>${extra||''}`;
+  }
+
+  // y = ax + b 문자열을 이탤릭 수식으로
+  function fmtEq(s){
+    return s.replace(/([+\-=])/g,'<span class="op">$1</span>');
+  }
+
+  // ===== 좌표 변환 =====
+  function toMath(sx,sy){ return { x:Math.round((sx-offX)/zoom*2)/2, y:Math.round(-(sy-offY)/zoom*2)/2 }; }
+
+  // ===== 그리기 =====
+  function draw(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    if(sketchMode){
+      // 빈 흰 노트 + 자유 필기 획
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height);
+      ctx.lineCap='round'; ctx.lineJoin='round';
+      strokes.forEach(s=>{
+        if(s.pts.length<1) return;
+        ctx.strokeStyle=s.color; ctx.lineWidth=s.width||2.5;
+        ctx.beginPath(); ctx.moveTo(s.pts[0].x, s.pts[0].y);
+        for(let i=1;i<s.pts.length;i++) ctx.lineTo(s.pts[i].x, s.pts[i].y);
+        ctx.stroke();
+      });
+      if(curStroke && curStroke.pts.length){
+        ctx.strokeStyle=curStroke.color; ctx.lineWidth=curStroke.width||2.5;
+        ctx.beginPath(); ctx.moveTo(curStroke.pts[0].x, curStroke.pts[0].y);
+        for(let i=1;i<curStroke.pts.length;i++) ctx.lineTo(curStroke.pts[i].x, curStroke.pts[i].y);
+        ctx.stroke();
+      }
+      return;
+    }
+    const sX=Math.floor(-offX/zoom)-1, eX=Math.ceil((cv.width-offX)/zoom)+1;
+    const sY=Math.floor(-offY/zoom)-1, eY=Math.ceil((cv.height-offY)/zoom)+1;
+    // 격자
+    ctx.strokeStyle='#EDEDEA'; ctx.lineWidth=1;
+    for(let x=sX;x<=eX;x++){ const px=x*zoom+offX; ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,cv.height); ctx.stroke(); }
+    for(let y=sY;y<=eY;y++){ const py=-y*zoom+offY; ctx.beginPath(); ctx.moveTo(0,py); ctx.lineTo(cv.width,py); ctx.stroke(); }
+    // 축
+    ctx.strokeStyle='#9CA3AF'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(0,offY); ctx.lineTo(cv.width,offY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(offX,0); ctx.lineTo(offX,cv.height); ctx.stroke();
+    // 눈금 숫자
+    ctx.font='12px Pretendard'; ctx.textBaseline='middle';
+    ctx.fillStyle='#6B7280';
+    ctx.textAlign='center';
+    for(let x=sX;x<=eX;x++){ if(x===0)continue; const px=x*zoom+offX; let py=offY+16; py=Math.max(14,Math.min(cv.height-14,py)); if(px<8||px>cv.width-8)continue; ctx.fillText(x,px,py); }
+    ctx.textAlign='right';
+    for(let y=sY;y<=eY;y++){ if(y===0)continue; const py=-y*zoom+offY; let px=offX-8; px=Math.max(20,Math.min(cv.width-6,px)); if(py<10||py>cv.height-10)continue; ctx.fillText(y,px,py); }
+    ctx.fillText('O', offX-7, offY+14);
+    // 직선
+    lines.forEach(l=>drawLine(l.p1,l.p2,l.color,2.5));
+    // 점
+    points.forEach((p,i)=>{
+      const px=p.x*zoom+offX, py=-p.y*zoom+offY;
+      ctx.beginPath(); ctx.arc(px,py,selForLine.includes(i)?7:5,0,7);
+      ctx.fillStyle=selForLine.includes(i)?'#F59E0B':(p.color||'#111827'); ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    });
+    // 교점 강조
+    if(presetMode){
+      // 읽기 모드: 학생이 클릭해 찾은 교점들만 노란색으로 표시
+      foundPoints.forEach(fp=>{
+        const px=fp.x*zoom+offX, py=-fp.y*zoom+offY;
+        ctx.beginPath(); ctx.arc(px,py,9,0,7);
+        ctx.fillStyle='#F59E0B'; ctx.fill();
+        ctx.strokeStyle='#fff'; ctx.lineWidth=2.5; ctx.stroke();
+        ctx.beginPath(); ctx.arc(px,py,14,0,7);
+        ctx.strokeStyle='rgba(245,158,11,.35)'; ctx.lineWidth=2; ctx.stroke();
+        // 좌표 라벨
+        ctx.font='bold 13px Pretendard'; ctx.fillStyle='#B45309'; ctx.textAlign='left';
+        ctx.fillText(`(${fmtNum(fp.x)}, ${fmtNum(fp.y)})`, px+16, py-10);
+      });
+    } else {
+      const ix=computeIntersection();
+      if(ix && ix.type==='point'){
+        const px=ix.x*zoom+offX, py=-ix.y*zoom+offY;
+        ctx.beginPath(); ctx.arc(px,py,8,0,7);
+        ctx.fillStyle='#111827'; ctx.fill();
+        ctx.strokeStyle='#fff'; ctx.lineWidth=2.5; ctx.stroke();
+        ctx.beginPath(); ctx.arc(px,py,13,0,7);
+        ctx.strokeStyle='rgba(17,24,39,.25)'; ctx.lineWidth=2; ctx.stroke();
+      }
+    }
+  }
+
+  function drawLine(p1,p2,c,w){
+    const dx=p2.x-p1.x;
+    ctx.strokeStyle=c; ctx.lineWidth=w; ctx.beginPath();
+    if(dx===0){ const px=p1.x*zoom+offX; ctx.moveTo(px,0); ctx.lineTo(px,cv.height); }
+    else{
+      const m=(p2.y-p1.y)/dx, b=p1.y-m*p1.x;
+      const x1=-offX/zoom, x2=(cv.width-offX)/zoom;
+      ctx.moveTo(x1*zoom+offX, -(m*x1+b)*zoom+offY);
+      ctx.lineTo(x2*zoom+offX, -(m*x2+b)*zoom+offY);
+    }
+    ctx.stroke();
+  }
+
+  // ===== 직선의 방정식 (두 점에서) =====
+  function lineEq(l){
+    const dx=l.p1.x-l.p2.x;
+    if(dx===0) return {vertical:true, x:l.p1.x, color:l.color};
+    const a=(l.p1.y-l.p2.y)/dx;
+    const b=l.p1.y-a*l.p1.x;
+    return {vertical:false, a, b, color:l.color};
+  }
+
+  // 임의의 두 직선의 교점 (한 점에서 만날 때만 반환, 소수 2자리 반올림)
+  function intersectOf(l1, l2){
+    const e1=lineEq(l1), e2=lineEq(l2);
+    if(e1.vertical && e2.vertical) return null;
+    let x, y;
+    if(e1.vertical){ x=e1.x; y=e2.a*x+e2.b; }
+    else if(e2.vertical){ x=e2.x; y=e1.a*x+e1.b; }
+    else {
+      if(Math.abs(e1.a-e2.a)<1e-9) return null; // 평행/일치
+      x=(e2.b-e1.b)/(e1.a-e2.a); y=e1.a*x+e1.b;
+    }
+    return { x:round2(x), y:round2(y) };
+  }
+
+  // ===== 교점 계산 =====
+  function computeIntersection(){
+    if(lines.length<2) return null;
+    const e1=lineEq(lines[0]), e2=lineEq(lines[1]);
+    if(e1.vertical && e2.vertical){
+      return e1.x===e2.x ? {type:'infinite'} : {type:'none'};
+    }
+    if(e1.vertical){ const y=e2.a*e1.x+e2.b; return {type:'point', x:e1.x, y}; }
+    if(e2.vertical){ const y=e1.a*e2.x+e1.b; return {type:'point', x:e2.x, y}; }
+    if(Math.abs(e1.a-e2.a)<1e-9){
+      return Math.abs(e1.b-e2.b)<1e-9 ? {type:'infinite'} : {type:'none'};
+    }
+    const x=(e2.b-e1.b)/(e1.a-e2.a);
+    const y=e1.a*x+e1.b;
+    return {type:'point', x:round2(x), y:round2(y)};
+  }
+  function round2(n){ return Math.round(n*100)/100; }
+  function fmtNum(n){ // 정수는 정수로, 아니면 소수 2자리
+    return Number.isInteger(n)? n : parseFloat(n.toFixed(2));
+  }
+
+  // ===== 대입 확인 패널 =====
+  function update(){ draw(); renderPanel(); }
+
+  function renderPanel(){
+    const verdict=document.getElementById('verdict');
+    const area=document.getElementById('checkArea');
+    const hint=document.getElementById('hint');
+
+    // 읽기 모드(문제1): 교점 클릭 UI(버튼 등)를 유지, 여기서 건드리지 않음
+    if(presetMode){ hint.style.display='none'; return; }
+
+    area.innerHTML='';
+
+    // 제출 탭: 자동 대입 확인을 숨기고 스스로 풀도록 안내
+    if(tab==='submit'){
+      verdict.className='verdict wait';
+      if(lines.length<2){
+        verdict.innerHTML='문제의 두 직선을 그려 보세요. 그린 뒤 아래에 교점 좌표를 적어 제출합니다.';
+      } else {
+        verdict.innerHTML='두 직선을 그렸어요. 교점을 찾아 아래 칸에 적고 제출해 보세요.<br><span style="font-size:13px; color:var(--sub)">정답 여부는 제출 후 확인할 수 있어요.</span>';
+      }
+      hint.style.display='none';
+      return;
+    }
+
+    if(lines.length<2){
+      verdict.className='verdict wait';
+      verdict.textContent = lines.length===0
+        ? '두 직선을 그리면 교점이 여기에 표시됩니다.'
+        : '직선이 하나 더 필요해요. 두 번째 직선을 그려 보세요.';
+      hint.style.display='block';
+      return;
+    }
+    hint.style.display='none';
+    const ix=computeIntersection();
+
+    if(ix.type==='none'){
+      verdict.className='verdict no';
+      verdict.innerHTML='두 직선이 <b>평행</b>해서 교점이 없어요. → 연립방정식의 <b>해가 없습니다</b>.';
+      return;
+    }
+    if(ix.type==='infinite'){
+      verdict.className='verdict yes';
+      verdict.innerHTML='두 직선이 <b>일치</b>해요. 모든 점이 공통 → 해가 <b>무수히 많습니다</b>.';
+      return;
+    }
+
+    // 한 점에서 만남 → 대입 확인
+    const x=ix.x, y=ix.y;
+    verdict.className='verdict wait';
+    verdict.innerHTML = `교점 &nbsp;${renderTex(`(${texNum(x)},\\ ${texNum(y)})`, `(${fmtNum(x)}, ${fmtNum(y)})`, true)}`;
+
+    const e1=lineEq(lines[0]), e2=lineEq(lines[1]);
+    let allOk=true;
+    [e1,e2].forEach((e,idx)=>{
+      const wrap=document.createElement('div'); wrap.className='subst';
+      let formulaTex, stepTex, ok;
+      if(e.vertical){
+        formulaTex = `x = ${texNum(e.x)}`;
+        stepTex = `x = ${texNum(x)}`;
+        ok = Math.abs(x-e.x)<1e-9;
+      } else {
+        // 직선의 식
+        formulaTex = `y = ${texLine(e.a, e.b)}`;
+        const rhs = e.a*x+e.b;
+        // 대입: 기울기 1·-1 자연스럽게
+        let axTerm;
+        if(e.a===1) axTerm = `(${texNum(x)})`;
+        else if(e.a===-1) axTerm = `-(${texNum(x)})`;
+        else axTerm = `${texNum(e.a)} \\times (${texNum(x)})`;
+        const bTerm = e.b>=0 ? `+ ${texNum(e.b)}` : `- ${texNum(Math.abs(e.b))}`;
+        stepTex = `y = ${axTerm} ${bTerm} = ${texNum(round2(rhs))}`;
+        ok = Math.abs(y-rhs)<1e-6;
+      }
+      if(!ok) allOk=false;
+      wrap.innerHTML =
+        `<div class="formula"><span class="name" style="background:${e.color}"></span>${renderTex(formulaTex, formulaTex, true)}</div>`+
+        `<div class="step">교점을 대입: ${renderTex(stepTex, stepTex, true)}</div>`+
+        `<div class="res ${ok?'yes':'no'}">${ok?'✓ 등식이 성립합니다':'✗ 성립하지 않아요'}</div>`;
+      area.appendChild(wrap);
+    });
+
+    const v=document.createElement('div');
+    v.className='verdict '+(allOk?'yes':'no');
+    v.innerHTML = allOk
+      ? `교점 ${renderTex(`(${texNum(x)}, ${texNum(y)})`, `(${fmtNum(x)}, ${fmtNum(y)})`, true)}은 두 식을 <b>모두 만족</b>해요. 이것이 곧 <b>연립방정식의 해</b>입니다.`
+      : `이 점은 두 식을 모두 만족하지 않아요. 직선을 다시 확인해 볼까요?`;
+    area.appendChild(v);
+  }
+  // 숫자 → tex (음수 마이너스 기호 정리)
+  function texNum(n){ return fmtNum(n).toString().replace(/-/g,'-'); }
+  // y = ax + b 형태의 tex 조립
+  function texLine(a, b){
+    let s='';
+    if(a===1) s='x';
+    else if(a===-1) s='-x';
+    else s=`${texNum(a)}x`;
+    if(b>0) s+=` + ${texNum(b)}`;
+    else if(b<0) s+=` - ${texNum(Math.abs(b))}`;
+    return s;
+  }
+  function fmtA(a){ if(a===1) return ''; if(a===-1) return '−'; return fmtNum(a); }
+
+  // ===== 입력 (마우스 + 터치) =====
+  let dragging=false, lx, ly;
+  function pos(e){ const r=cv.getBoundingClientRect(); const cx=e.touches?e.touches[0].clientX:e.clientX; const cy=e.touches?e.touches[0].clientY:e.clientY; return {x:cx-r.left, y:cy-r.top}; }
+
+  function start(e){
+    dragging=true; const p=pos(e); lx=p.x; ly=p.y;
+    // 스케치 모드: 자유 필기 시작
+    if(sketchMode){
+      curStroke={ color: eraserOn?'#ffffff':penColor, width: eraserOn?18:2.5, pts:[{x:p.x,y:p.y}] };
+      draw();
+      return;
+    }
+    const m=toMath(p.x,p.y);
+    if(mode==='readpoint'){
+      // 먼저: 이미 찍은 교점 근처를 누르면 그 점을 지움(토글)
+      const rmIdx=foundPoints.findIndex(q=>Math.hypot(q.x-m.x, q.y-m.y)<0.8);
+      if(rmIdx!==-1){
+        foundPoints.splice(rmIdx,1);
+        if(foundPoints.length){
+          const last=foundPoints[foundPoints.length-1];
+          document.getElementById('verdict').className='verdict yes';
+          document.getElementById('verdict').innerHTML=`교점: ${renderTex(`(${texNum(last.x)},\\ ${texNum(last.y)})`,`(${fmtNum(last.x)}, ${fmtNum(last.y)})`,true)}`;
+        } else {
+          document.getElementById('verdict').className='verdict wait';
+          document.getElementById('verdict').innerHTML='두 직선의 <b>교점</b>을 눌러 좌표를 확인해 보세요.';
+        }
+        draw();
+        return;
+      }
+      // 여러 직선의 모든 쌍의 교점 중 클릭 위치에 가장 가까운 것을 찾음
+      let best=null, bestDist=1.2;
+      for(let i=0;i<lines.length;i++){
+        for(let j=i+1;j<lines.length;j++){
+          const ip=intersectOf(lines[i], lines[j]);
+          if(!ip) continue;
+          const d=Math.hypot(ip.x-m.x, ip.y-m.y);
+          if(d<bestDist){ bestDist=d; best=ip; }
+        }
+      }
+      if(best){
+        if(!foundPoints.some(q=>Math.abs(q.x-best.x)<1e-6 && Math.abs(q.y-best.y)<1e-6)){
+          foundPoints.push(best);
+        }
+        document.getElementById('verdict').className='verdict yes';
+        document.getElementById('verdict').innerHTML=`교점: ${renderTex(`(${texNum(best.x)},\\ ${texNum(best.y)})`,`(${fmtNum(best.x)}, ${fmtNum(best.y)})`,true)}`;
+        draw();
+      } else {
+        document.getElementById('verdict').className='verdict wait';
+        document.getElementById('verdict').innerHTML='두 직선이 <b>만나는 점</b>을 눌러 보세요.';
+      }
+      return;
+    }
+    if(mode==='point'){
+      const i=points.findIndex(q=>q.x===m.x&&q.y===m.y);
+      if(i===-1) points.push({...m,color}); else points.splice(i,1);
+      update();
+    } else if(mode==='line'){
+      const pi=points.findIndex(q=>Math.hypot(q.x-m.x,q.y-m.y)<0.6);
+      if(pi!==-1){
+        if(selForLine.includes(pi)) selForLine=selForLine.filter(k=>k!==pi);
+        else{ selForLine.push(pi);
+          if(selForLine.length===2){
+            lines.push({p1:points[selForLine[0]], p2:points[selForLine[1]], color});
+            selForLine=[];
+          }
+        }
+        update();
+      }
+    } else if(mode==='eraser'){
+      const pi=points.findIndex(q=>Math.hypot(q.x-m.x,q.y-m.y)<0.6);
+      if(pi!==-1){ const dp=points[pi]; points.splice(pi,1); lines=lines.filter(l=>l.p1!==dp&&l.p2!==dp); update(); }
+      else{ // 직선 지우기: 클릭점이 직선 위에 있으면
+        for(let k=lines.length-1;k>=0;k--){ if(onLine(lines[k],m)){ lines.splice(k,1); break; } }
+        update();
+      }
+    }
+  }
+  function onLine(l,m){
+    const e=lineEq(l);
+    if(e.vertical) return Math.abs(m.x-e.x)<0.4;
+    return Math.abs(m.y-(e.a*m.x+e.b))<0.4;
+  }
+  function move(e){
+    const p=pos(e);
+    // 스케치 모드: 획에 점 추가
+    if(sketchMode){
+      if(dragging && curStroke){ curStroke.pts.push({x:p.x,y:p.y}); draw(); }
+      return;
+    }
+    const m=toMath(p.x,p.y);
+    document.getElementById('coord').textContent=`(${m.x}, ${m.y})`;
+    if(dragging && mode==='move'){ offX+=p.x-lx; offY+=p.y-ly; lx=p.x; ly=p.y; draw(); }
+  }
+  function endStroke(){
+    if(sketchMode && curStroke){ if(curStroke.pts.length) strokes.push(curStroke); curStroke=null; draw(); }
+  }
+  cv.addEventListener('mousedown',start);
+  cv.addEventListener('mousemove',move);
+  window.addEventListener('mouseup',()=>{ endStroke(); dragging=false; });
+
+  // ===== 터치: 한 손가락=기존 동작, 두 손가락=핀치 줌/이동 =====
+  let pinch=null; // {dist, cx, cy}
+  function touchDist(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
+  function touchMid(t){ const r=cv.getBoundingClientRect();
+    return { x:(t[0].clientX+t[1].clientX)/2 - r.left, y:(t[0].clientY+t[1].clientY)/2 - r.top }; }
+
+  cv.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    if(!sketchMode && e.touches.length===2){
+      dragging=false; selForLine=selForLine; // 진행 중 단일터치 취소
+      pinch={ dist:touchDist(e.touches), mid:touchMid(e.touches) };
+    } else if(e.touches.length===1){
+      pinch=null; start(e);
+    }
+  }, {passive:false});
+
+  cv.addEventListener('touchmove', e=>{
+    e.preventDefault();
+    if(!sketchMode && e.touches.length===2 && pinch){
+      const newDist=touchDist(e.touches);
+      const newMid=touchMid(e.touches);
+      let factor=newDist/pinch.dist;
+      const oldZoom=zoom;
+      zoom=Math.max(15, Math.min(200, zoom*factor));
+      const realFactor=zoom/oldZoom;
+      offX = newMid.x - (pinch.mid.x - offX) * realFactor;
+      offY = newMid.y - (pinch.mid.y - offY) * realFactor;
+      offX += newMid.x - pinch.mid.x;
+      offY += newMid.y - pinch.mid.y;
+      pinch.dist=newDist; pinch.mid=newMid;
+      draw();
+    } else if(e.touches.length===1 && !pinch){
+      move(e);
+    }
+  }, {passive:false});
+
+  cv.addEventListener('touchend', e=>{
+    if(e.touches.length<2) pinch=null;
+    if(e.touches.length===0){ endStroke(); dragging=false; }
+  });
+
+  // ===== 도구/색 =====
+  function setMode(m){
+    mode=m;
+    ['Move','Point','Line','Eraser'].forEach(x=>document.getElementById('m'+x).classList.remove('active'));
+    document.getElementById('m'+m.charAt(0).toUpperCase()+m.slice(1)).classList.add('active');
+    selForLine=[]; draw();
+  }
+  function setColor(c,el){
+    color=c;
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+    el.classList.add('active');
+  }
+  function clearAll(silent){
+    if(!silent && !confirm('그린 것을 모두 지울까요?')) return;
+    points=[]; lines=[]; selForLine=[]; strokes=[]; curStroke=null; update();
+  }
+
+  // ===== 채점 =====
+  function normalize(s){ return (s||'').toString().trim().replace(/\s/g,''); }
+  function grade(subId, xv, yv){
+    const ans=subProblems[subId].answer;
+    const x=normalize(xv), y=normalize(yv);
+    if(ans.type==='none') return /없|해가없/i.test(x)||/없/i.test(y);
+    if(ans.type==='infinite') return /무수|무한|많/i.test(x)||/무수|무한|많/i.test(y);
+    return parseFloat(x)===ans.x && parseFloat(y)===ans.y;
+  }
+
+  // ===== 제출 =====
+  function myKeys(){ const k=localStorage.getItem('cross_v2_subs'); return k?JSON.parse(k):[]; }
+  function saveKey(k){ const a=myKeys(); if(!a.includes(k)){ a.push(k); localStorage.setItem('cross_v2_subs', JSON.stringify(a)); } }
+
+  // Firebase 키에 쓸 수 없는 문자 정리
+  function safeKey(s){ return (s||'').toString().replace(/[.#$\[\]\/\s]/g,'_'); }
+
+  function submitAnswer(){
+    if(!database){ alert('인터넷 연결이 필요해요. 연결 상태를 확인해 주세요.'); return; }
+    const cls=document.getElementById('stuClass').value;
+    const name=document.getElementById('stuName').value.trim();
+    if(!cls||!name){ alert('반과 이름을 입력해 주세요.'); return; }
+    if(!activeSub){ alert('문제를 선택해 주세요.'); return; }
+    if(sketchMode){
+      if(strokes.length<1){ alert('풀이 과정을 노트에 적어 주세요.'); return; }
+    } else {
+      if(lines.length<1){ alert('직선을 그려야 제출할 수 있어요.'); return; }
+    }
+    const xv=document.getElementById('ansX').value||'?';
+    const yv=document.getElementById('ansY').value||'?';
+
+    const btn=document.getElementById('submitBtn');
+    btn.disabled=true; btn.textContent='전송 중...';
+
+    // 캔버스 캡처 (스케치는 뷰 개념 없이 그대로, 좌표평면은 그린 내용이 다 보이게 맞춤)
+    let img;
+    if(sketchMode){
+      img=cv.toDataURL('image/png');
+    } else {
+      const oz=zoom, ox=offX, oy=offY;
+      fitViewToContent();   // 학생이 그린 점·직선이 모두 보이도록 뷰 자동 조정
+      img=cv.toDataURL('image/png');
+      zoom=oz; offX=ox; offY=oy; draw();
+    }
+
+    // 매 제출마다 새 기록으로 저장 (덮어쓰지 않고 계속 쌓임)
+    const ref=database.ref(DB_PATH).push();
+    saveKey(ref.key); // 내 제출로 인식되도록 키 저장
+    ref.set({
+      class:cls, name:name, subId:activeSub, label:subProblems[activeSub].label,
+      x:xv, y:yv, img:img, points:points, lines:lines, time:Date.now()
+    }).then(()=>{
+      alert('제출되었습니다! 아래 “내가 제출한 풀이”에서 확인할 수 있어요.');
+      btn.disabled=false; btn.textContent='그래프와 답안 제출하기';
+      refreshMyRecords(); // 구독을 기다리지 않고 즉시 내 목록 갱신
+      setTimeout(()=>{ const mr=document.getElementById('myRecords'); if(mr && mr.style.display!=='none') mr.scrollIntoView({behavior:'smooth', block:'start'}); }, 300);
+    }).catch(()=>{ alert('전송에 실패했어요. 다시 시도해 주세요.'); btn.disabled=false; btn.textContent='그래프와 답안 제출하기'; });
+  }
+
+  // 내 제출 목록을 DB에서 직접 읽어 갱신 (구독 타이밍에 의존하지 않음)
+  function refreshMyRecords(){
+    if(!database || isTeacher) return;
+    database.ref(DB_PATH).once('value').then(snap=>{
+      const keys=myKeys(); const mine=[];
+      snap.forEach(c=>{ if(keys.includes(c.key)) mine.push({id:c.key, ...c.val()}); });
+      mine.sort((a,b)=>b.time-a.time);
+      renderMy(mine);
+    });
+  }
+
+  // ===== 내 제출 목록 (학생) =====
+  function renderMy(data){
+    const g=document.getElementById('myGrid');
+    if(!data.length){ g.innerHTML='<p style="color:var(--sub); font-size:14px;">아직 제출한 풀이가 없어요.</p>'; return; }
+    g.innerHTML='';
+    data.forEach(d=>{
+      recCache[d.id]=d; // 캐시에 저장
+      const el=document.createElement('div'); el.className='rec';
+      const t=new Date(d.time); const ts=`${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`;
+      el.innerHTML=`
+        <div class="top"><span>${d.label}</span><span class="tag ok">제출됨</span></div>
+        <img src="${d.img}" onclick="openInspectById('${d.id}')">
+        <div class="bot">답: <b>x = ${d.x}, y = ${d.y}</b> · ${ts}</div>`;
+      g.appendChild(el);
+    });
+  }
+
+  // ===== 교사 대시보드 =====
+  function renderDash(){
+    const cf=document.getElementById('fClass').value;
+    const mf=document.getElementById('fMission').value;
+    const g=document.getElementById('dashGrid');
+    const data=(window.allData||[]).filter(d=>(cf==='all'||d.class===cf)&&(mf==='all'||d.subId===mf));
+
+    if(data.length===0){ g.innerHTML='<p style="color:var(--sub); font-size:15px; padding:8px;">아직 제출된 풀이가 없습니다.</p>'; return; }
+
+    // 문제(subId)별로 그룹핑
+    const groups={};
+    Object.keys(subProblems).forEach(id=>{ groups[id]=[]; });
+    data.forEach(d=>{ if(!groups[d.subId]) groups[d.subId]=[]; groups[d.subId].push(d); });
+
+    g.innerHTML='';
+    Object.keys(subProblems).forEach(subId=>{
+      const items=groups[subId]||[];
+      if(items.length===0) return; // 제출 없는 문제는 표시 안 함
+      // 문제 섹션 헤더
+      const section=document.createElement('div');
+      section.className='dash-section';
+      section.innerHTML=`<div class="dash-section-title">${subProblems[subId].label} <span class="cnt">${items.length}명 제출</span></div>`;
+      const grid=document.createElement('div');
+      grid.className='grid';
+      items.forEach(d=>{
+        recCache[d.id]=d; // 캐시에 저장
+        const el=document.createElement('div'); el.className='rec';
+        const t=new Date(d.time); const ts=`${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`;
+        el.innerHTML=`
+          <div class="top">
+            <span>${d.class==='교사'?'시연':d.class+'반'} ${d.name}</span>
+            <button class="del" onclick="delRec('${d.id}')">삭제</button>
+          </div>
+          <img src="${d.img}" onclick="openInspectById('${d.id}')">
+          <div class="bot">답: <b>x = ${d.x}, y = ${d.y}</b> · ${ts}</div>`;
+        grid.appendChild(el);
+      });
+      section.appendChild(grid);
+      g.appendChild(section);
+    });
+  }
+  function delRec(id){ if(database && confirm('삭제할까요?')) database.ref(DB_PATH+'/'+id).remove(); }
+
+  // 교사: DB에서 직접 다시 읽어 대시보드 갱신 (실시간 구독이 놓쳤을 때 대비)
+  function refreshDash(){
+    if(!database) return;
+    database.ref(DB_PATH).once('value').then(snap=>{
+      window.allData=[]; snap.forEach(c=>{ window.allData.push({id:c.key, ...c.val()}); });
+      window.allData.sort((a,b)=>b.time-a.time);
+      renderDash();
+    }).catch(err=>console.warn('대시보드 새로고침 오류:', err));
+  }
+
+  function fillMissionFilter(){
+    const sel=document.getElementById('fMission');
+    Object.entries(subProblems).forEach(([id,pb])=>{
+      const o=document.createElement('option'); o.value=id; o.textContent=pb.label; sel.appendChild(o);
+    });
+  }
+
+  // ===== 풀이 확대 모달 =====
+  // 제출 데이터 캐시 (id → data). onclick에 이미지를 박지 않기 위함
+  const recCache={};
+  function openInspectById(id){
+    const d=recCache[id];
+    if(!d) return;
+    document.getElementById('inspectImg').src=d.img;
+    document.getElementById('inspectInfo').innerHTML=
+      `${d.class==='교사'?'교사 시연':d.class+'반'} ${d.name} · ${d.label} · 답: x=${d.x}, y=${d.y}`;
+    document.getElementById('inspectModal').classList.add('open');
+  }
+  function closeInspect(){ document.getElementById('inspectModal').classList.remove('open'); }
+  function openQrModal(){ document.getElementById('qrModal').classList.add('open'); }
+  function closeQrModal(){ document.getElementById('qrModal').classList.remove('open'); }
+</script>
+</body>
+</html>
